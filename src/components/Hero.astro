@@ -1,0 +1,57 @@
+---
+import { site, youtubeThumb } from '../data/site';
+
+const poster = site.heroPoster || youtubeThumb(site.showreelYoutubeId);
+---
+
+<section class="relative flex h-svh min-h-[560px] items-end overflow-hidden thumb-bg">
+  {
+    site.heroVideo ? (
+      <video
+        class="absolute inset-0 size-full object-cover"
+        src={site.heroVideo}
+        poster={poster}
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        aria-hidden="true"
+      />
+    ) : (
+      <img
+        class="absolute inset-0 size-full scale-105 object-cover blur-[2px]"
+        src={poster}
+        alt=""
+        aria-hidden="true"
+        fetchpriority="high"
+      />
+    )
+  }
+  <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-ink/30"></div>
+
+  <div class="relative mx-auto w-full max-w-7xl px-4 pb-16 sm:px-8 sm:pb-24">
+    <p class="mb-4 text-xs tracking-[0.35em] text-accent uppercase">Quay phim · Dựng video</p>
+    <h1 class="max-w-4xl text-4xl leading-[1.1] font-extrabold sm:text-6xl lg:text-7xl">
+      {site.tagline}
+    </h1>
+    <div class="mt-8 flex flex-wrap items-center gap-4">
+      <button
+        type="button"
+        data-youtube={site.showreelYoutubeId}
+        data-title="Showreel"
+        class="group flex items-center gap-3 rounded-full bg-paper py-2 pr-6 pl-2 font-medium text-ink transition hover:bg-accent"
+      >
+        <span class="flex size-10 items-center justify-center rounded-full bg-ink text-paper">
+          <svg viewBox="0 0 24 24" class="ml-0.5 size-4" fill="currentColor" aria-hidden="true">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+        </span>
+        Xem showreel
+      </button>
+      <a href="#du-an" class="px-2 text-paper/80 underline-offset-4 hover:underline">
+        Các dự án ↓
+      </a>
+    </div>
+  </div>
+</section>

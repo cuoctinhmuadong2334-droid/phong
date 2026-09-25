@@ -1,0 +1,83 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Contact from '../../components/Contact.astro';
+import { youtubeThumb } from '../../data/site';
+
+export async function getStaticPaths() {
+  const projects = (await getCollection('projects')).sort(
+    (a, b) =>
+      Number(b.data.featured) - Number(a.data.featured) ||
+      b.data.order - a.data.order ||
+      b.data.year - a.data.year,
+  );
+  return projects.map((project, i) => ({
+    params: { slug: project.id },
+    props: { project, next: projects[(i + 1) % projects.length] },
+  }));
+}
+
+const { project, next } = Astro.props;
+const { Content } = await render(project);
+const d = project.data;
+const thumb = d.thumbnail || youtubeThumb(d.youtubeId);
+
+const meta = [
+  ['Khách hàng', d.client],
+  ['Năm', String(d.year)],
+  ['Thể loại', d.category],
+  ['Vai trò', d.role],
+].filter(([, v]) => v) as [string, string][];
+---
+
+<Base title={d.title} description={`${d.category} · ${d.client ?? ''} ${d.year}`} image={thumb}>
+  <article class="mx-auto max-w-6xl px-4 pt-24 pb-16 sm:px-8 sm:pt-32">
+    <a href="/#du-an" class="text-sm text-muted hover:text-paper">← Tất cả dự án</a>
+    <h1 class="mt-6 text-3xl font-bold sm:text-5xl">{d.title}</h1>
+
+    <button
+      type="button"
+      data-youtube={d.youtubeId}
+      data-title={d.title}
+      class="thumb-bg group relative mt-10 block aspect-video w-full overflow-hidden rounded"
+      aria-label={`Phát video ${d.title}`}
+    >
+      <img src={thumb} alt="" class="size-full object-cover transition duration-700 group-hover:scale-105" />
+      <span class="absolute inset-0 flex items-center justify-center bg-ink/30 transition group-hover:bg-ink/10">
+        <span class="flex size-20 items-center justify-center rounded-full bg-paper text-ink transition group-hover:scale-110 group-hover:bg-accent">
+          <svg viewBox="0 0 24 24" class="ml-1 size-8" fill="currentColor" aria-hidden="true">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+        </span>
+      </span>
+    </button>
+
+    <div class="mt-12 grid gap-10 lg:grid-cols-[1fr_2fr]">
+      <dl class="grid grid-cols-2 gap-6 self-start lg:grid-cols-1">
+        {
+          meta.map(([k, v]) => (
+            <div>
+              <dt class="text-xs tracking-[0.25em] text-muted uppercase">{k}</dt>
+              <dd class="mt-1">{v}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <div class="text-lg leading-relaxed text-paper/85 [&_p+p]:mt-4">
+        <Content />
+      </div>
+    </div>
+
+    {
+      next.id !== project.id && (
+        <a href={`/du-an/${next.id}/`} class="group mt-20 block border-t border-line pt-8">
+          <span class="text-xs tracking-[0.25em] text-muted uppercase">Dự án tiếp theo</span>
+          <span class="mt-2 block text-2xl font-medium transition group-hover:text-accent sm:text-3xl">
+            {next.data.title} →
+          </span>
+        </a>
+      )
+    }
+  </article>
+  <Contact />
+</Base>
