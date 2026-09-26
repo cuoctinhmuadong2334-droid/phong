@@ -17,7 +17,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - run: npm run build:jersey
       - uses: actions/upload-artifact@v4
         with:
-          name: video
-          path: out/video.mp4
+          name: videos
+          path: out/*.mp4
