@@ -1,0 +1,98 @@
+---
+import { getCollection } from 'astro:content';
+import { youtubeThumb } from '../data/site';
+
+const projects = (await getCollection('projects')).sort(
+  (a, b) =>
+    Number(b.data.featured) - Number(a.data.featured) ||
+    b.data.order - a.data.order ||
+    b.data.year - a.data.year,
+);
+const categories = [...new Set(projects.map((p) => p.data.category))];
+---
+
+<section id="du-an" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-20 sm:px-8 sm:py-28">
+  <div class="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+    <h2 class="text-3xl font-bold sm:text-4xl">Dự án</h2>
+    <div class="flex flex-wrap gap-2 text-sm" role="group" aria-label="Lọc theo thể loại">
+      <button type="button" data-filter="all" aria-pressed="true" class="filter-btn">Tất cả</button>
+      {
+        categories.map((c) => (
+          <button type="button" data-filter={c} aria-pressed="false" class="filter-btn">
+            {c}
+          </button>
+        ))
+      }
+    </div>
+  </div>
+
+  <ul class="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+    {
+      projects.map((p, i) => (
+        <li data-category={p.data.category}>
+          <a href={`/du-an/${p.id}/`} class="group block">
+            <div class="thumb-bg relative aspect-video overflow-hidden rounded">
+              <img
+                src={p.data.thumbnail || youtubeThumb(p.data.youtubeId)}
+                alt={p.data.title}
+                loading={i < 3 ? 'eager' : 'lazy'}
+                class="size-full object-cover transition duration-700 group-hover:scale-105"
+              />
+              {p.data.preview && (
+                <video
+                  data-preview
+                  src={p.data.preview}
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  class="absolute inset-0 size-full object-cover opacity-0 transition duration-500 group-hover:opacity-100"
+                />
+              )}
+              <div class="absolute inset-0 bg-ink/20 transition group-hover:bg-transparent" />
+              <span class="absolute top-3 left-3 rounded-full bg-ink/70 px-3 py-1 text-xs backdrop-blur">
+                {p.data.category}
+              </span>
+            </div>
+            <h3 class="mt-4 text-lg font-medium transition group-hover:text-accent">
+              {p.data.title}
+            </h3>
+            <p class="mt-1 text-sm text-muted">
+              {[p.data.client, p.data.year].filter(Boolean).join(' · ')}
+            </p>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  @reference '../styles/global.css';
+  .filter-btn {
+    @apply rounded-full border border-line px-4 py-1.5 text-paper/70 transition hover:border-paper/50 hover:text-paper;
+  }
+  .filter-btn[aria-pressed='true'] {
+    @apply border-accent bg-accent text-ink;
+  }
+</style>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+  const items = document.querySelectorAll<HTMLElement>('#du-an li[data-category]');
+
+  buttons.forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const f = btn.dataset.filter;
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      items.forEach((li) => (li.hidden = f !== 'all' && li.dataset.category !== f));
+    }),
+  );
+
+  // Clip preview: chỉ phát khi rê chuột vào
+  document.querySelectorAll<HTMLVideoElement>('video[data-preview]').forEach((v) => {
+    const card = v.closest('a')!;
+    card.addEventListener('mouseenter', () => v.play().catch(() => {}));
+    card.addEventListener('mouseleave', () => v.pause());
+  });
+</script>
