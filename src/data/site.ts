@@ -4,10 +4,10 @@
 // ============================================================
 
 export const site = {
-  name: 'Phong Media', // MẪU: tên / thương hiệu
+  name: 'Nguyễn Vũ Phong',
+  role: 'Camera Operator & Editor',
   tagline: 'Quay & dựng video kể chuyện bằng hình ảnh', // MẪU: slogan
-  description:
-    'Portfolio quay phim, dựng video: TVC, MV, video sự kiện và phim cưới.', // MẪU: mô tả khi share link
+  description: 'Nguyễn Vũ Phong — Camera Operator & Editor. Portfolio quay phim, dựng video.',
 
   // Video nền ở đầu trang: đặt file vào thư mục public/ rồi ghi đường dẫn, vd '/hero.mp4'.
   // Để trống ('') thì dùng ảnh thumbnail của showreel làm nền.
@@ -18,23 +18,23 @@ export const site = {
   showreelYoutubeId: 'aqz-KE-bpKQ', // MẪU
 
   contact: {
-    phone: '0900000000', // MẪU: số điện thoại, cũng dùng cho Zalo
+    phone: '0824890655', // cũng dùng cho Zalo
     email: '', // không bắt buộc
-    location: 'TP. Hồ Chí Minh', // MẪU
+    location: '', // vd 'TP. Hồ Chí Minh'
   },
 
   // Để trống ('') mạng nào không dùng thì icon đó sẽ tự ẩn
   social: {
-    facebook: 'https://facebook.com/', // MẪU
-    instagram: 'https://instagram.com/', // MẪU
-    tiktok: 'https://tiktok.com/', // MẪU
+    facebook: 'https://www.facebook.com/share/1DtesZTzD9/?mibextid=wwXIfr',
+    instagram: '',
+    tiktok: '',
     youtube: '',
   },
 
   about: {
     photo: '', // vd '/chan-dung.jpg' (đặt file trong public/)
     bio: [
-      'Mình là Phong, quay phim và dựng video tự do với hơn 5 năm kinh nghiệm.', // MẪU
+      'Mình là Nguyễn Vũ Phong, camera operator và editor — quay phim và dựng video.', // MẪU
       'Mình làm TVC cho thương hiệu, MV ca nhạc, video sự kiện và phim cưới — từ lên kịch bản, quay, dựng đến chỉnh màu.', // MẪU
     ],
     gear: ['Sony FX3', 'DJI Ronin RS3', 'DJI Mini 4 Pro', 'DaVinci Resolve', 'Premiere Pro'], // MẪU
