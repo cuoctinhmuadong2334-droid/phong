@@ -2,7 +2,6 @@
 export const CONTENT = {
   hookTitle: "Đau nhức, cứng khớp\nmỗi khi vận động?",
   hookSubtitle: "Sụn khớp bị bào mòn theo thời gian",
-  productName: "CH-Alpha® PLUS",
   tagline: "Collagen chuyên biệt\ncho SỤN KHỚP",
   ingredients: ["Collagen CH-Alpha®", "Chiết xuất tầm xuân", "Vitamin C", "Selen"],
   benefits: [
@@ -11,7 +10,6 @@ export const CONTENT = {
     "Giảm viêm, dịu khớp nhanh chóng",
   ],
   pack: "Hộp 30 ống uống · Liệu trình 1 tháng",
-  brandLine: "COLLAGEN SỤN KHỚP HÀNG ĐẦU TẠI ĐỨC",
   stats: [
     { value: 42, direction: "down", label: "Mức độ đau khớp khi vận động" },
     { value: 45, direction: "up", label: "Tổng hợp collagen và proteoglycan tại khớp" },

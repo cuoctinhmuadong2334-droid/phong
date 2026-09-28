@@ -8,6 +8,7 @@ import {
 import { bodyFont } from "../fonts";
 import { COLORS, CONTENT } from "./content";
 import { Joint } from "./Joint";
+import { Logo } from "./Logo";
 import { Product } from "./Product";
 
 export const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -237,16 +238,15 @@ export const BenefitsScene: React.FC = () => {
       <div
         style={{
           ...centered,
-          top: 150,
-          fontSize: 66,
-          fontWeight: 800,
+          top: 110,
           opacity: header,
+          transform: `scale(${interpolate(header, [0, 1], [0.9, 1])})`,
         }}
       >
-        {CONTENT.productName}
+        <Logo width={420} />
       </div>
-      <div style={{ ...centered, top: 260 }}>
-        <Joint width={470} health={health} inflammation={inflammation} flow={flow} />
+      <div style={{ ...centered, top: 340 }}>
+        <Joint width={430} health={health} inflammation={inflammation} flow={flow} />
       </div>
       <div
         style={{
@@ -288,22 +288,22 @@ export const CtaScene: React.FC = () => {
           opacity: product,
         }}
       >
-        <Product width={960} sweepEvery={50} />
+        <Product width={860} sweepEvery={50} />
       </div>
       <div
         style={{
           ...centered,
-          top: 1110,
+          top: 1010,
           opacity: name,
           transform: `translateY(${interpolate(name, [0, 1], [40, 0])}px)`,
         }}
       >
-        <div style={{ fontSize: 88, fontWeight: 800 }}>{CONTENT.productName}</div>
-        <div style={{ fontSize: 40, fontWeight: 500, color: COLORS.cartilage, marginTop: 8 }}>
+        <Logo width={560} />
+        <div style={{ fontSize: 40, fontWeight: 500, color: COLORS.cartilage, marginTop: 22 }}>
           {CONTENT.pack}
         </div>
       </div>
-      <div style={{ ...centered, top: 1330 }}>
+      <div style={{ ...centered, top: 1390 }}>
         <div
           style={{
             fontSize: 58,

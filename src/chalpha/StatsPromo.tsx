@@ -10,6 +10,7 @@ import {
 } from "remotion";
 import { bodyFont } from "../fonts";
 import { COLORS, CONTENT } from "./content";
+import { Logo } from "./Logo";
 import { AMPOULE_IMAGE, Product } from "./Product";
 import { BenefitCard, centered, clamp, useEnter } from "./Scenes";
 
@@ -56,7 +57,7 @@ const KEYS = [
   { f: 330, x: 790, y: 1000, h: 940 },
   { f: 358, x: 540, y: 480, h: 640 },
   { f: 450, x: 540, y: 480, h: 640 },
-  { f: 478, x: 540, y: 790, h: 900 },
+  { f: 478, x: 540, y: 720, h: 800 },
 ];
 
 const Ampoule: React.FC = () => {
@@ -88,11 +89,15 @@ const Header: React.FC = () => {
   const enter = useEnter();
   const t = enter(0, 200);
   return (
-    <div style={{ ...centered, top: 130, opacity: t }}>
-      <div style={{ fontSize: 88, fontWeight: 800, lineHeight: 1.1 }}>{CONTENT.productName}</div>
-      <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: 2, marginTop: 14, opacity: 0.9 }}>
-        {CONTENT.brandLine}
-      </div>
+    <div
+      style={{
+        ...centered,
+        top: 120,
+        opacity: t,
+        transform: `scale(${interpolate(t, [0, 1], [0.9, 1])})`,
+      }}
+    >
+      <Logo width={520} />
     </div>
   );
 };
@@ -349,15 +354,15 @@ const CtaScene: React.FC = () => {
       <div
         style={{
           ...centered,
-          top: 1260,
+          top: 1150,
           opacity: name,
           transform: `translateY(${interpolate(name, [0, 1], [40, 0])}px)`,
         }}
       >
-        <div style={{ fontSize: 84, fontWeight: 800 }}>{CONTENT.productName}</div>
-        <div style={{ fontSize: 38, fontWeight: 500, marginTop: 4 }}>{CONTENT.pack}</div>
+        <Logo width={520} />
+        <div style={{ fontSize: 38, fontWeight: 500, marginTop: 20 }}>{CONTENT.pack}</div>
       </div>
-      <div style={{ ...centered, top: 1470 }}>
+      <div style={{ ...centered, top: 1500 }}>
         <div
           style={{
             fontSize: 56,
