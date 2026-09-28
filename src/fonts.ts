@@ -30,7 +30,7 @@ const load = (
 
 export const titleFont = load("Oswald", "oswald", ["500", "700"]);
 
-export const bodyFont = load("Be Vietnam Pro", "be-vietnam-pro", ["500", "700"], [
+export const bodyFont = load("Be Vietnam Pro", "be-vietnam-pro", ["500", "700", "800"], [
   { name: "latin", range: LATIN },
   { name: "vietnamese", range: VIETNAMESE },
 ]);

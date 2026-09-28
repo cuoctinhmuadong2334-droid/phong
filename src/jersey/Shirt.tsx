@@ -1,5 +1,5 @@
 import { Badge } from "./Badge";
-import { scriptFont, techFont } from "./fonts";
+import { scriptFont, techFont } from "../fonts";
 import { DiamondMark, TriangleMark, WingMark } from "./Logos";
 import type { JerseyVariant } from "./types";
 

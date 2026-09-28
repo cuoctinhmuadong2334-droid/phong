@@ -6,7 +6,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import { Badge } from "./Badge";
-import { bodyFont, titleFont } from "./fonts";
+import { bodyFont, titleFont } from "../fonts";
 import { Shirt } from "./Shirt";
 import type { JerseyVariant } from "./types";
 

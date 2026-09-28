@@ -1,4 +1,5 @@
 import { Composition } from "remotion";
+import { ChAlphaPromo, CH_ALPHA_DURATION } from "./chalpha/ChAlphaPromo";
 import { HelloWorld } from "./HelloWorld";
 import { JerseyShowcase, SHOWCASE_DURATION } from "./jersey/JerseyShowcase";
 
@@ -24,6 +25,14 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1080}
         height={1080}
+      />
+      <Composition
+        id="ChAlphaPromo"
+        component={ChAlphaPromo}
+        durationInFrames={CH_ALPHA_DURATION}
+        fps={30}
+        width={1080}
+        height={1920}
       />
     </>
   );

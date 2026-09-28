@@ -1,4 +1,4 @@
-import { titleFont } from "./fonts";
+import { titleFont } from "../fonts";
 
 // Simplified tournament badge (text-based stand-in for the sponsor patch).
 export const Badge: React.FC<{ width: number }> = ({ width }) => {

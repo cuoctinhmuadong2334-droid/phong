@@ -1,4 +1,4 @@
-import { techFont } from "./fonts";
+import { techFont } from "../fonts";
 
 // Simplified wordmark stand-ins drawn as shapes/text (not the official logos).
 
