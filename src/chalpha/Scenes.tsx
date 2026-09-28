@@ -10,16 +10,16 @@ import { COLORS, CONTENT } from "./content";
 import { Joint } from "./Joint";
 import { Product } from "./Product";
 
-const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
+export const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
-const useEnter = () => {
+export const useEnter = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   return (delay: number, damping = 14) =>
     spring({ frame: frame - delay, fps, config: { damping } });
 };
 
-const centered: React.CSSProperties = {
+export const centered: React.CSSProperties = {
   position: "absolute",
   left: 0,
   right: 0,
@@ -164,6 +164,64 @@ export const RevealScene: React.FC = () => {
   );
 };
 
+export const BenefitCard: React.FC<{
+  text: string;
+  index: number;
+  enter: number;
+  check: number;
+}> = ({ text, index, enter, check }) => (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 30,
+      background: "white",
+      borderRadius: 32,
+      padding: "30px 36px",
+      minHeight: 110,
+      boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+      opacity: interpolate(enter, [0, 0.4], [0, 1], clamp),
+      transform: `translateX(${interpolate(enter, [0, 1], [700, 0])}px)`,
+    }}
+  >
+    <div
+      style={{
+        flexShrink: 0,
+        width: 96,
+        height: 96,
+        borderRadius: "50%",
+        background: index === 2 ? COLORS.red : COLORS.blue,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transform: `scale(${check})`,
+      }}
+    >
+      <svg width="52" height="52" viewBox="0 0 24 24">
+        <path
+          d="M4 12.5 L9.5 18 L20 6"
+          fill="none"
+          stroke="white"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+    <div
+      style={{
+        fontFamily: bodyFont,
+        fontSize: 44,
+        fontWeight: 700,
+        lineHeight: 1.3,
+        color: COLORS.blueDark,
+      }}
+    >
+      {text}
+    </div>
+  </div>
+);
+
 const CARD_DELAYS = [20, 70, 120];
 
 export const BenefitsScene: React.FC = () => {
@@ -205,57 +263,7 @@ export const BenefitsScene: React.FC = () => {
           const t = enter(CARD_DELAYS[i], 15);
           const check = enter(CARD_DELAYS[i] + 12, 10);
           return (
-            <div
-              key={benefit}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 30,
-                background: "white",
-                borderRadius: 32,
-                padding: "30px 36px",
-                minHeight: 110,
-                boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
-                opacity: interpolate(t, [0, 0.4], [0, 1], clamp),
-                transform: `translateX(${interpolate(t, [0, 1], [700, 0])}px)`,
-              }}
-            >
-              <div
-                style={{
-                  flexShrink: 0,
-                  width: 96,
-                  height: 96,
-                  borderRadius: "50%",
-                  background: i === 2 ? COLORS.red : COLORS.blue,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transform: `scale(${check})`,
-                }}
-              >
-                <svg width="52" height="52" viewBox="0 0 24 24">
-                  <path
-                    d="M4 12.5 L9.5 18 L20 6"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="3.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <div
-                style={{
-                  fontFamily: bodyFont,
-                  fontSize: 44,
-                  fontWeight: 700,
-                  lineHeight: 1.3,
-                  color: COLORS.blueDark,
-                }}
-              >
-                {benefit}
-              </div>
-            </div>
+            <BenefitCard key={benefit} text={benefit} index={i} enter={t} check={check} />
           );
         })}
       </div>

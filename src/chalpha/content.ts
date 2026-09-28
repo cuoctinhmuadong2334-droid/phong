@@ -11,6 +11,12 @@ export const CONTENT = {
     "Giảm viêm, dịu khớp nhanh chóng",
   ],
   pack: "Hộp 30 ống uống · Liệu trình 1 tháng",
+  brandLine: "COLLAGEN SỤN KHỚP HÀNG ĐẦU TẠI ĐỨC",
+  stats: [
+    { value: 42, direction: "down", label: "Mức độ đau khớp khi vận động" },
+    { value: 45, direction: "up", label: "Tổng hợp collagen và proteoglycan tại khớp" },
+  ],
+  ringStat: { value: 88, label: "Người dùng thấy cải thiện cơn đau tại khớp" },
   cta: "ĐẶT HÀNG NGAY",
   // Mandatory notice for dietary-supplement ads in Vietnam.
   disclaimer:

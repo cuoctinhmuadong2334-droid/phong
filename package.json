@@ -8,6 +8,7 @@
     "build": "remotion render HelloWorld out/video.mp4",
     "build:jersey": "remotion render JerseyShowcase out/jersey.mp4",
     "build:chalpha": "remotion render ChAlphaPromo out/chalpha.mp4",
+    "build:chalpha-stats": "remotion render ChAlphaStatsPromo out/chalpha-stats.mp4",
     "upgrade": "remotion upgrade",
     "lint": "tsc"
   },
