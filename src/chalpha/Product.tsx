@@ -6,7 +6,7 @@ export const BOX_IMAGE = {
 };
 export const AMPOULE_IMAGE = {
   src: staticFile("chalpha/ampoule.png"),
-  ratio: 1206 / 692,
+  ratio: 888 / 172,
 };
 
 // Cut-out product photo with a glossy light sweep that repeats every `sweepEvery` frames.

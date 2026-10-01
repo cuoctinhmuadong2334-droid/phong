@@ -76,7 +76,7 @@ const Ampoule: React.FC = () => {
         position: "absolute",
         left: x - w / 2,
         top: y - h / 2 + float + (1 - enter) * 1300,
-        transform: `rotate(${(1 - enter) * -40 + Math.sin(frame / 30) * 2}deg)`,
+        transform: `rotate(${23 + (1 - enter) * -40 + Math.sin(frame / 30) * 2}deg)`,
         opacity: interpolate(frame, [448, 466], [1, 0], clamp),
       }}
     >
