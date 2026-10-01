@@ -11,8 +11,8 @@
 //|   3. Ro DCA: gia di nguoc lenh xa nhat thi nhoi bac tiep theo.    |
 //|      Mac dinh: 0.01/0.02/0.03/0.04/0.1/0.2/0.3/0.6 cach nhau $3,  |
 //|      roi 1/2/4 lot cach nhau $5.                                  |
-//|   4. Bac 4, 8, 12...: chi mo khi da co 3 lenh dung chieu TP       |
-//|      ke tu luc mo bac DCA truoc do.                               |
+//|   4. (Tuy chon, mac dinh TAT nhu bot goc) chan bac 4, 8, 12...    |
+//|      can 3 lenh dung chieu TP. Bat bang InpGateEvery = 4.         |
 //|   5. Ro co tong lot LON NHAT: TP tong khi gia vuot gia TB $2.4    |
 //|      (nhu bot goc). Ro nho hon: trailing $1.                      |
 //|   Khoang cach nhoi do bang gia phia dong lenh (BUY theo Bid, SELL |
@@ -36,7 +36,7 @@
 //|  gia di nguoc = 830 USC (tai khoan cent). Chay demo truoc.        |
 //+------------------------------------------------------------------+
 #property copyright "phong"
-#property version   "1.40"
+#property version   "1.50"
 #property description "Lenh dung chieu TP + hedge khi gia giat ve + ro DCA 2 chieu, TP tong $4 cho ro lon nhat"
 
 #include <Trade\Trade.mqh>
@@ -62,7 +62,7 @@ input double InpGridStep2      = 5.0;  // Khoang cach nhoi cho bac lon ($)
 input int    InpStep2FromLevel = 9;    // Tu bac nay dung khoang cach lon
 
 input group "Chan DCA: bac 4, 8, 12... can lenh dung chieu TP"
-input int InpGateEvery = 4; // Chan cac bac chia het cho so nay (0 = tat)
+input int InpGateEvery = 0; // Chan cac bac chia het cho so nay (0 = tat, nhu bot goc)
 input int InpGateTPs   = 3; // So lenh dung chieu TP can co ke tu bac truoc
 
 input group "Chot loi ro DCA"
