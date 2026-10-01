@@ -93,11 +93,10 @@ const Atmosphere: React.FC = () => {
 };
 
 // Glossy highlight sweeping across the product, clipped to its silhouette.
-const SWEEPS = [12, 245, 385];
-const ProductShine: React.FC = () => {
+const ProductShine: React.FC<{ sweeps: number[] }> = ({ sweeps }) => {
   const frame = useCurrentFrame();
   const [x, y, w, h] = PRODUCT;
-  const start = [...SWEEPS].reverse().find((s) => frame >= s) ?? SWEEPS[0];
+  const start = [...sweeps].reverse().find((s) => frame >= s) ?? sweeps[0];
   const p = interpolate(frame, [start, start + 45], [-25, 125], {
     ...clamp,
     easing: Easing.inOut(Easing.quad),
@@ -118,6 +117,80 @@ const ProductShine: React.FC = () => {
         background: `linear-gradient(105deg, rgba(255,255,255,0) ${p - 9}%, rgba(255,255,255,0.7) ${p}%, rgba(255,255,255,0) ${p + 9}%)`,
       }}
     />
+  );
+};
+
+/**
+ * The key-visual photo with its camera, atmosphere, product shine and title layers.
+ * `pullback`: start close on the product and pull back to the full poster.
+ * `settle`: start slightly zoomed in and ease back (used when returning to the poster).
+ * Children are overlays placed in poster coordinates (they move with the camera).
+ */
+export const KeyVisualStage: React.FC<{
+  camera: "pullback" | "settle";
+  animateTitles: boolean;
+  sweeps: number[];
+  duration: number;
+  children?: React.ReactNode;
+}> = ({ camera, animateTitles, sweeps, duration, children }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const pullback = camera === "pullback";
+  const u = pullback
+    ? interpolate(frame, [0, 80], [1, 0], { ...clamp, easing: Easing.inOut(Easing.cubic) })
+    : 0;
+  const settle = pullback
+    ? 1
+    : interpolate(frame, [0, 40], [1.1, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+  const driftFrom = pullback ? 80 : 40;
+  const push = interpolate(frame, [driftFrom, duration], [1, pullback ? 1.035 : 1.025], clamp);
+
+  const logo = animateTitles ? spring({ frame: frame - 52, fps, config: { damping: 200 } }) : 1;
+  const badge = animateTitles ? spring({ frame: frame - 64, fps, config: { damping: 11 } }) : 1;
+  const reveal = (start: number) =>
+    animateTitles
+      ? interpolate(frame, [start, start + 28], [0, 1], {
+          ...clamp,
+          easing: Easing.out(Easing.cubic),
+        })
+      : 1;
+  const line = (p: number): React.CSSProperties => ({
+    clipPath: `inset(-20% ${(1 - p) * 100}% -20% 0)`,
+    transform: `translateY(${(1 - p) * 18}px)`,
+  });
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#00308a", overflow: "hidden" }}>
+      <AbsoluteFill
+        style={{ transformOrigin: "540px 1000px", transform: `scale(${push * settle})` }}
+      >
+        <AbsoluteFill
+          style={{
+            transformOrigin: `${PRODUCT_CENTER.x}px ${PRODUCT_CENTER.y}px`,
+            transform: `translate(${-46 * u}px, ${-200 * u}px) scale(${1 + 0.3 * u})`,
+          }}
+        >
+          <Img src={kv("plate.jpg")} style={{ position: "absolute", width: 1080, height: 1920 }} />
+          <Atmosphere />
+          <ProductShine sweeps={sweeps} />
+          <Layer
+            name="logo"
+            style={{ opacity: logo, transform: `translateX(${(1 - logo) * -70}px)` }}
+          />
+          <Layer
+            name="badge"
+            style={{
+              opacity: interpolate(badge, [0, 0.5], [0, 1], clamp),
+              transform: `scale(${0.4 + 0.6 * badge}) rotate(${(1 - badge) * -20 + Math.sin(frame / 22) * 1.2 * badge}deg)`,
+            }}
+          />
+          <Layer name="line1" style={line(reveal(70))} />
+          <Layer name="line2" style={line(reveal(86))} />
+          {children}
+        </AbsoluteFill>
+      </AbsoluteFill>
+    </AbsoluteFill>
   );
 };
 
@@ -148,6 +221,11 @@ const Check: React.FC<{ scale: number }> = ({ scale }) => (
   </div>
 );
 
+const glassPill: React.CSSProperties = {
+  background: "rgba(255,255,255,0.14)",
+  border: "1.5px solid rgba(255,255,255,0.35)",
+};
+
 const BENEFIT_DELAYS = [135, 165, 195];
 
 const Benefits: React.FC = () => {
@@ -173,13 +251,12 @@ const Benefits: React.FC = () => {
           <div
             key={benefit}
             style={{
+              ...glassPill,
               display: "flex",
               alignItems: "center",
               gap: 22,
               padding: "16px 28px 16px 16px",
               borderRadius: 48,
-              background: "rgba(255,255,255,0.14)",
-              border: "1.5px solid rgba(255,255,255,0.35)",
               opacity: interpolate(e, [0, 0.4], [0, 1], clamp),
               transform: `translateY(${interpolate(e, [0, 1], [40, 0])}px)`,
             }}
@@ -204,12 +281,72 @@ const Benefits: React.FC = () => {
   );
 };
 
-const CallToAction: React.FC = () => {
+// Ingredient chips in the empty sky between the headline and the product.
+export const KvIngredients: React.FC<{ start: number }> = ({ start }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const pack = spring({ frame: frame - 290, fps, config: { damping: 200 } });
-  const button = spring({ frame: frame - 302, fps, config: { damping: 10 } });
-  const pulse = 1 + Math.max(0, Math.sin((frame - 320) / 6)) * 0.05 * (frame > 320 ? 1 : 0);
+  const label = spring({ frame: frame - start, fps, config: { damping: 200 } });
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 590,
+        left: 60,
+        right: 60,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 26,
+        fontFamily: bodyFont,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 30,
+          fontWeight: 700,
+          letterSpacing: 6,
+          color: "rgba(255,255,255,0.9)",
+          opacity: label,
+          transform: `translateY(${interpolate(label, [0, 1], [20, 0])}px)`,
+        }}
+      >
+        THÀNH PHẦN
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 18 }}>
+        {CONTENT.ingredients.map((item, i) => {
+          const t = spring({ frame: frame - start - 6 - i * 6, fps, config: { damping: 14 } });
+          return (
+            <div
+              key={item}
+              style={{
+                ...glassPill,
+                fontSize: 34,
+                fontWeight: 700,
+                color: "white",
+                padding: "14px 30px",
+                borderRadius: 999,
+                textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                opacity: interpolate(t, [0, 0.4], [0, 1], clamp),
+                transform: `translateY(${interpolate(t, [0, 1], [30, 0])}px) scale(${interpolate(t, [0, 1], [0.9, 1])})`,
+              }}
+            >
+              + {item}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Pack info and order button on the light floor below the product.
+export const KvCallToAction: React.FC<{ start: number }> = ({ start }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const pack = spring({ frame: frame - start, fps, config: { damping: 200 } });
+  const button = spring({ frame: frame - start - 12, fps, config: { damping: 10 } });
+  const pulseFrom = start + 30;
+  const pulse = frame > pulseFrom ? 1 + Math.max(0, Math.sin((frame - pulseFrom) / 6)) * 0.05 : 1;
   return (
     <div
       style={{
@@ -253,70 +390,50 @@ const CallToAction: React.FC = () => {
   );
 };
 
-export const ChAlphaKeyVisualPromo: React.FC = () => {
+/**
+ * Mandatory notice, fixed on screen (outside the camera). `onLight` sits on the key
+ * visual's light floor; `onDark` is for the dark-blue illustrated scenes.
+ */
+export const Disclaimer: React.FC<{
+  tone: "onLight" | "onDark";
+  fadeInAt?: number;
+  opacity?: number;
+}> = ({ tone, fadeInAt, opacity = 1 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Camera: start close on the product, pull back to the full poster, then drift in.
-  const u = interpolate(frame, [0, 80], [1, 0], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-  const push = interpolate(frame, [80, CH_ALPHA_KV_DURATION], [1, 1.035], clamp);
-
-  const logo = spring({ frame: frame - 52, fps, config: { damping: 200 } });
-  const badge = spring({ frame: frame - 64, fps, config: { damping: 11 } });
-  const reveal = (start: number) =>
-    interpolate(frame, [start, start + 28], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
-  const line = (p: number): React.CSSProperties => ({
-    clipPath: `inset(-20% ${(1 - p) * 100}% -20% 0)`,
-    transform: `translateY(${(1 - p) * 18}px)`,
-  });
-
+  const fade =
+    fadeInAt === undefined ? 1 : interpolate(frame, [fadeInAt, fadeInAt + 20], [0, 1], clamp);
   return (
-    <AbsoluteFill style={{ backgroundColor: "#00308a", overflow: "hidden" }}>
-      <AbsoluteFill style={{ transformOrigin: "540px 1000px", transform: `scale(${push})` }}>
-        <AbsoluteFill
-          style={{
-            transformOrigin: `${PRODUCT_CENTER.x}px ${PRODUCT_CENTER.y}px`,
-            transform: `translate(${-46 * u}px, ${-200 * u}px) scale(${1 + 0.3 * u})`,
-          }}
-        >
-          <Img src={kv("plate.jpg")} style={{ position: "absolute", width: 1080, height: 1920 }} />
-          <Atmosphere />
-          <ProductShine />
-          <Layer
-            name="logo"
-            style={{ opacity: logo, transform: `translateX(${(1 - logo) * -70}px)` }}
-          />
-          <Layer
-            name="badge"
-            style={{
-              opacity: interpolate(badge, [0, 0.5], [0, 1], clamp),
-              transform: `scale(${0.4 + 0.6 * badge}) rotate(${(1 - badge) * -20 + Math.sin(frame / 22) * 1.2 * badge}deg)`,
-            }}
-          />
-          <Layer name="line1" style={line(reveal(70))} />
-          <Layer name="line2" style={line(reveal(86))} />
-          <Benefits />
-          <CallToAction />
-        </AbsoluteFill>
-      </AbsoluteFill>
-      {/* Mandatory notice stays fixed on screen (over the light floor) while the camera moves. */}
-      <div
-        style={{
-          position: "absolute",
-          top: 1800,
-          left: 90,
-          right: 90,
-          textAlign: "center",
-          fontFamily: bodyFont,
-          fontSize: 24,
-          fontWeight: 500,
-          lineHeight: 1.4,
-          color: "#4a4f5c",
-          opacity: interpolate(frame, [15, 35], [0, 1], clamp),
-        }}
-      >
-        {CONTENT.disclaimer}
-      </div>
-    </AbsoluteFill>
+    <div
+      style={{
+        position: "absolute",
+        top: 1800,
+        left: 90,
+        right: 90,
+        textAlign: "center",
+        fontFamily: bodyFont,
+        fontSize: 24,
+        fontWeight: 500,
+        lineHeight: 1.4,
+        color: tone === "onLight" ? "#4a4f5c" : "rgba(255,255,255,0.8)",
+        opacity: fade * opacity,
+      }}
+    >
+      {CONTENT.disclaimer}
+    </div>
   );
 };
+
+export const ChAlphaKeyVisualPromo: React.FC = () => (
+  <AbsoluteFill>
+    <KeyVisualStage
+      camera="pullback"
+      animateTitles
+      sweeps={[12, 245, 385]}
+      duration={CH_ALPHA_KV_DURATION}
+    >
+      <Benefits />
+      <KvCallToAction start={290} />
+    </KeyVisualStage>
+    <Disclaimer tone="onLight" fadeInAt={15} />
+  </AbsoluteFill>
+);

@@ -10,6 +10,7 @@
     "build:chalpha": "remotion render ChAlphaPromo out/chalpha.mp4",
     "build:chalpha-stats": "remotion render ChAlphaStatsPromo out/chalpha-stats.mp4",
     "build:chalpha-kv": "remotion render ChAlphaKeyVisual out/chalpha-kv.mp4",
+    "build:chalpha-story": "remotion render ChAlphaStory out/chalpha-story.mp4",
     "upgrade": "remotion upgrade",
     "lint": "tsc"
   },
