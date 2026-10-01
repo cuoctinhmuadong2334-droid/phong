@@ -20,6 +20,7 @@ jobs:
       - run: npm run build:jersey
       - run: npm run build:chalpha
       - run: npm run build:chalpha-stats
+      - run: npm run build:chalpha-kv
       - uses: actions/upload-artifact@v4
         with:
           name: videos

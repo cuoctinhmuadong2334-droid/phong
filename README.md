@@ -18,6 +18,7 @@ npm install
 | `npm run build:jersey` | Render video giới thiệu áo ra `out/jersey.mp4` |
 | `npm run build:chalpha` | Render video dọc CH-Alpha Plus ra `out/chalpha.mp4` |
 | `npm run build:chalpha-stats` | Render video dọc CH-Alpha Plus bản số liệu ra `out/chalpha-stats.mp4` |
+| `npm run build:chalpha-kv` | Render motion từ hình key visual CH-Alpha Plus ra `out/chalpha-kv.mp4` |
 | `npm run lint` | Kiểm tra TypeScript |
 | `npm run upgrade` | Nâng cấp Remotion |
 
@@ -35,6 +36,7 @@ npm install
   - `Joint.tsx` – minh họa khớp gối: sụn mòn → sụn phục hồi, hạt collagen, vùng viêm
   - `Scenes.tsx` – 4 cảnh: mở đầu, giới thiệu sản phẩm, công dụng, kêu gọi mua
   - `StatsPromo.tsx` – bản thứ hai: ống thuốc tách nền (`public/chalpha/ampoule.png`) + số liệu 42% / 45% / 88% chuyển động
+  - `KeyVisualPromo.tsx` – motion từ nguyên tấm key visual (sản phẩm giữ nguyên trong ảnh, không tách nền); chỉ logo, cờ Đức và tiêu đề được tách lớp để chuyển động (`public/chalpha/kv/`)
 - `public/chalpha/product.png` – ảnh sản phẩm đã tách nền
 - `public/fonts/` – font đóng gói sẵn (SIL OFL) để render không cần mạng
 - `remotion.config.ts` – cấu hình render
