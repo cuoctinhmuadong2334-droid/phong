@@ -214,7 +214,7 @@ const CallToAction: React.FC = () => {
     <div
       style={{
         position: "absolute",
-        top: 1580,
+        top: 1556,
         left: 0,
         right: 0,
         display: "flex",
@@ -303,7 +303,7 @@ export const ChAlphaKeyVisualPromo: React.FC = () => {
       <div
         style={{
           position: "absolute",
-          top: 1790,
+          top: 1800,
           left: 90,
           right: 90,
           textAlign: "center",
