@@ -8,7 +8,7 @@ import {
 import { bodyFont } from "../fonts";
 import { COLORS, CONTENT } from "./content";
 import { Joint } from "./Joint";
-import { Logo } from "./Logo";
+import { Logo, MadeInGermany } from "./Logo";
 import { Product } from "./Product";
 
 export const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -84,6 +84,24 @@ export const HookScene: React.FC = () => {
   );
 };
 
+const Badge: React.FC<{ delay: number }> = ({ delay }) => {
+  const enter = useEnter();
+  const t = enter(delay, 12);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        right: 60,
+        top: 60,
+        opacity: t,
+        transform: `scale(${t})`,
+      }}
+    >
+      <MadeInGermany width={170} />
+    </div>
+  );
+};
+
 export const RevealScene: React.FC = () => {
   const enter = useEnter();
   const [line1, line2] = CONTENT.tagline.split("\n");
@@ -92,7 +110,8 @@ export const RevealScene: React.FC = () => {
   const product = enter(10, 13);
   return (
     <AbsoluteFill>
-      <div style={{ ...centered, top: 190, gap: 18 }}>
+      <Badge delay={20} />
+      <div style={{ ...centered, top: 260, gap: 18 }}>
         <div
           style={{
             fontSize: 64,
@@ -120,7 +139,7 @@ export const RevealScene: React.FC = () => {
       <div
         style={{
           ...centered,
-          top: 520,
+          top: 640,
           transform: `scale(${interpolate(product, [0, 1], [0.5, 1])}) rotate(${interpolate(product, [0, 1], [-8, 0])}deg)`,
           opacity: interpolate(product, [0, 0.3], [0, 1], clamp),
         }}
@@ -130,7 +149,7 @@ export const RevealScene: React.FC = () => {
       <div
         style={{
           position: "absolute",
-          top: 1390,
+          top: 1330,
           left: 40,
           right: 40,
           display: "flex",
@@ -243,7 +262,7 @@ export const BenefitsScene: React.FC = () => {
           transform: `scale(${interpolate(header, [0, 1], [0.9, 1])})`,
         }}
       >
-        <Logo width={420} />
+        <Logo width={440} />
       </div>
       <div style={{ ...centered, top: 340 }}>
         <Joint width={430} health={health} inflammation={inflammation} flow={flow} />
@@ -280,30 +299,31 @@ export const CtaScene: React.FC = () => {
   const pulse = 1 + Math.max(0, Math.sin((frame - 30) / 6)) * 0.05;
   return (
     <AbsoluteFill>
+      <Badge delay={10} />
       <div
         style={{
           ...centered,
-          top: 230,
+          top: 300,
           transform: `scale(${interpolate(product, [0, 1], [0.8, 1])})`,
           opacity: product,
         }}
       >
-        <Product width={860} sweepEvery={50} />
+        <Product width={900} sweepEvery={50} />
       </div>
       <div
         style={{
           ...centered,
-          top: 1010,
+          top: 960,
           opacity: name,
           transform: `translateY(${interpolate(name, [0, 1], [40, 0])}px)`,
         }}
       >
-        <Logo width={560} />
+        <Logo width={540} />
         <div style={{ fontSize: 40, fontWeight: 500, color: COLORS.cartilage, marginTop: 22 }}>
           {CONTENT.pack}
         </div>
       </div>
-      <div style={{ ...centered, top: 1390 }}>
+      <div style={{ ...centered, top: 1320 }}>
         <div
           style={{
             fontSize: 58,

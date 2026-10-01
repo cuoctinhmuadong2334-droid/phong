@@ -15,7 +15,7 @@ export const Product: React.FC<{
   sweepEvery?: number;
   image?: { src: string; ratio: number };
   glow?: boolean;
-}> = ({ width, sweepEvery = 70, image = BOX_IMAGE, glow = true }) => {
+}> = ({ width, sweepEvery = 70, image = BOX_IMAGE, glow = false }) => {
   const { src: SRC, ratio: RATIO } = image;
   const frame = useCurrentFrame();
   const p = interpolate(frame % sweepEvery, [0, sweepEvery * 0.6], [-20, 120], {

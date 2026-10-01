@@ -10,8 +10,8 @@ import {
 } from "remotion";
 import { bodyFont } from "../fonts";
 import { COLORS, CONTENT } from "./content";
-import { Logo } from "./Logo";
-import { AMPOULE_IMAGE, Product } from "./Product";
+import { Logo, MadeInGermany } from "./Logo";
+import { AMPOULE_IMAGE, BOX_IMAGE, Product } from "./Product";
 import { BenefitCard, centered, clamp, useEnter } from "./Scenes";
 
 const BUBBLES = new Array(30).fill(true).map((_, i) => ({
@@ -57,7 +57,6 @@ const KEYS = [
   { f: 330, x: 790, y: 1000, h: 940 },
   { f: 358, x: 540, y: 480, h: 640 },
   { f: 450, x: 540, y: 480, h: 640 },
-  { f: 478, x: 540, y: 720, h: 800 },
 ];
 
 const Ampoule: React.FC = () => {
@@ -78,9 +77,10 @@ const Ampoule: React.FC = () => {
         left: x - w / 2,
         top: y - h / 2 + float + (1 - enter) * 1300,
         transform: `rotate(${(1 - enter) * -40 + Math.sin(frame / 30) * 2}deg)`,
+        opacity: interpolate(frame, [448, 466], [1, 0], clamp),
       }}
     >
-      <Product width={w} image={AMPOULE_IMAGE} sweepEvery={80} glow={false} />
+      <Product width={w} image={AMPOULE_IMAGE} sweepEvery={80} />
     </div>
   );
 };
@@ -89,16 +89,30 @@ const Header: React.FC = () => {
   const enter = useEnter();
   const t = enter(0, 200);
   return (
-    <div
-      style={{
-        ...centered,
-        top: 120,
-        opacity: t,
-        transform: `scale(${interpolate(t, [0, 1], [0.9, 1])})`,
-      }}
-    >
-      <Logo width={520} />
-    </div>
+    <>
+      <div
+        style={{
+          position: "absolute",
+          left: 60,
+          top: 80,
+          opacity: t,
+          transform: `translateX(${interpolate(t, [0, 1], [-60, 0])}px)`,
+        }}
+      >
+        <Logo width={420} />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          right: 60,
+          top: 70,
+          opacity: t,
+          transform: `translateX(${interpolate(t, [0, 1], [60, 0])}px)`,
+        }}
+      >
+        <MadeInGermany width={170} />
+      </div>
+    </>
   );
 };
 
@@ -346,6 +360,7 @@ const BenefitScene: React.FC = () => {
 const CtaScene: React.FC = () => {
   const frame = useCurrentFrame();
   const enter = useEnter();
+  const product = enter(4, 14);
   const name = enter(20, 200);
   const button = enter(34, 10);
   const pulse = 1 + Math.max(0, Math.sin((frame - 40) / 6)) * 0.05;
@@ -353,16 +368,35 @@ const CtaScene: React.FC = () => {
     <AbsoluteFill>
       <div
         style={{
+          position: "absolute",
+          right: 60,
+          top: 70,
+        }}
+      >
+        <MadeInGermany width={170} />
+      </div>
+      <div
+        style={{
           ...centered,
-          top: 1150,
+          top: 300,
+          opacity: product,
+          transform: `scale(${interpolate(product, [0, 1], [0.7, 1])})`,
+        }}
+      >
+        <Product width={900} image={BOX_IMAGE} sweepEvery={60} />
+      </div>
+      <div
+        style={{
+          ...centered,
+          top: 960,
           opacity: name,
           transform: `translateY(${interpolate(name, [0, 1], [40, 0])}px)`,
         }}
       >
-        <Logo width={520} />
-        <div style={{ fontSize: 38, fontWeight: 500, marginTop: 20 }}>{CONTENT.pack}</div>
+        <Logo width={540} />
+        <div style={{ fontSize: 38, fontWeight: 500, marginTop: 22 }}>{CONTENT.pack}</div>
       </div>
-      <div style={{ ...centered, top: 1500 }}>
+      <div style={{ ...centered, top: 1320 }}>
         <div
           style={{
             fontSize: 56,
