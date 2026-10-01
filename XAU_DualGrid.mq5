@@ -4,7 +4,7 @@
 //|                                                                   |
 //|  Logic:                                                           |
 //|   1. Moi nen moi: mo lenh DUNG CHIEU (0.01) theo huong cay nen    |
-//|      vua dong, dat TP co dinh (mac dinh $1.5).                    |
+//|      vua dong, dat TP co dinh (mac dinh $1, nhu bot goc).         |
 //|   2. HEDGE khi gia giat ve: ro nao dang trong thi theo doi dinh/  |
 //|      day tu luc ro trong. Gia giat nguoc >= $0.7 (bat len tu day  |
 //|      -> SELL, giat xuong tu dinh -> BUY) thi mo bac 1 cua ro do.  |
@@ -13,8 +13,10 @@
 //|      roi 1/2/4 lot cach nhau $5.                                  |
 //|   4. Bac 4, 8, 12...: chi mo khi da co 3 lenh dung chieu TP       |
 //|      ke tu luc mo bac DCA truoc do.                               |
-//|   5. Ro co tong lot LON NHAT: TP tong khi gia vuot gia TB $4      |
-//|      (lai = 4 x tong lot x 100 USC). Ro nho hon: trailing $1.     |
+//|   5. Ro co tong lot LON NHAT: TP tong khi gia vuot gia TB $2.4    |
+//|      (nhu bot goc). Ro nho hon: trailing $1.                      |
+//|   Khoang cach nhoi do bang gia phia dong lenh (BUY theo Bid, SELL |
+//|   theo Ask) nhu bot goc, nen lenh thuc te cach nhau ~$2.7-3.     |
 //|   Magic: ro DCA = Magic, lenh dung chieu = Magic + 1.             |
 //|                                                                   |
 //|  Bang lai lo goc trai tren: tien nap, ket qua (lai/lo da chot),   |
@@ -34,7 +36,7 @@
 //|  gia di nguoc = 830 USC (tai khoan cent). Chay demo truoc.        |
 //+------------------------------------------------------------------+
 #property copyright "phong"
-#property version   "1.30"
+#property version   "1.40"
 #property description "Lenh dung chieu TP + hedge khi gia giat ve + ro DCA 2 chieu, TP tong $4 cho ro lon nhat"
 
 #include <Trade\Trade.mqh>
@@ -45,7 +47,7 @@ input double          InpMinBody   = 0.0;       // Than nen toi thieu ($), 0 = m
 
 input group "Lenh dung chieu (theo huong nen, TP co dinh)"
 input double InpScalpLot = 0.01; // Lot lenh dung chieu
-input double InpScalpTP  = 1.5;  // TP lenh dung chieu ($)
+input double InpScalpTP  = 1.0;  // TP lenh dung chieu ($)
 input int    InpScalpMax = 1;    // So lenh dung chieu chua TP toi da moi chieu
 
 input group "Hedge khi gia giat ve (mo bac 1 cua ro dang trong)"
@@ -64,7 +66,7 @@ input int InpGateEvery = 4; // Chan cac bac chia het cho so nay (0 = tat)
 input int InpGateTPs   = 3; // So lenh dung chieu TP can co ke tu bac truoc
 
 input group "Chot loi ro DCA"
-input double InpBigTP         = 4.0; // TP tong ro lon nhat: gia vuot gia TB ($), 0 = dung trailing
+input double InpBigTP         = 2.4; // TP tong ro lon nhat: gia vuot gia TB ($), 0 = dung trailing
 input double InpTrailStart    = 1.0; // Ro nho hon: bat trailing khi gia vuot gia TB ($)
 input double InpTrailDistance = 0.4; // Ro nho hon: dong ro khi gia lui lai tu dinh ($)
 
@@ -331,8 +333,8 @@ void AddLevel(const ENUM_POSITION_TYPE type, const Basket &b, const MqlTick &tic
       return;
    int    level = b.count + 1;
    double step  = StepFor(level);
-   bool   due   = (type == POSITION_TYPE_BUY) ? tick.ask <= b.edgePrice - step
-                  : tick.bid >= b.edgePrice + step;
+   bool   due   = (type == POSITION_TYPE_BUY) ? tick.bid <= b.edgePrice - step
+                  : tick.ask >= b.edgePrice + step;
    if(!due)
       return;
    if(IsGated(level) && GateCount(type, b) < InpGateTPs)
