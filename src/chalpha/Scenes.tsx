@@ -186,10 +186,9 @@ export const RevealScene: React.FC = () => {
 
 export const BenefitCard: React.FC<{
   text: string;
-  index: number;
   enter: number;
   check: number;
-}> = ({ text, index, enter, check }) => (
+}> = ({ text, enter, check }) => (
   <div
     style={{
       display: "flex",
@@ -210,7 +209,7 @@ export const BenefitCard: React.FC<{
         width: 96,
         height: 96,
         borderRadius: "50%",
-        background: index === 2 ? COLORS.red : COLORS.blue,
+        background: COLORS.blue,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -282,7 +281,7 @@ export const BenefitsScene: React.FC = () => {
           const t = enter(CARD_DELAYS[i], 15);
           const check = enter(CARD_DELAYS[i] + 12, 10);
           return (
-            <BenefitCard key={benefit} text={benefit} index={i} enter={t} check={check} />
+            <BenefitCard key={benefit} text={benefit} enter={t} check={check} />
           );
         })}
       </div>

@@ -347,7 +347,6 @@ const BenefitScene: React.FC = () => {
           <BenefitCard
             key={benefit}
             text={benefit}
-            index={i}
             enter={enter(20 + i * 18, 15)}
             check={enter(32 + i * 18, 10)}
           />
