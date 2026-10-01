@@ -2,7 +2,7 @@ import { Img, interpolate, staticFile, useCurrentFrame } from "remotion";
 
 export const BOX_IMAGE = {
   src: staticFile("chalpha/product.png"),
-  ratio: 760 / 854,
+  ratio: 530 / 807,
 };
 export const AMPOULE_IMAGE = {
   src: staticFile("chalpha/ampoule.png"),
