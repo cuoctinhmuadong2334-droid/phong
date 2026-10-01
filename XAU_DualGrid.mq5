@@ -15,6 +15,10 @@
 //|   4. Chot ca ro DCA bang trailing tinh tu gia trung binh cua ro.  |
 //|   Magic: ro DCA = Magic, lenh dung chieu = Magic + 1.             |
 //|                                                                   |
+//|  Bang lai lo goc trai tren: tien nap, ket qua (lai/lo da chot),   |
+//|  tien rut, ngay bat dau, ket qua hom nay, lai/lo dang tha noi,    |
+//|  va trang thai cac ro DCA.                                        |
+//|                                                                   |
 //|  Them so voi bot goc: loc spread, thong bao ve dien thoai.        |
 //|  Co san nhung MAC DINH TAT (giong bot goc): cat lo ro theo % so   |
 //|  du, gioi han lo trong ngay. Goi y bat: 3% va 6%.                 |
@@ -28,7 +32,7 @@
 //|  gia di nguoc = 830 USC (tai khoan cent). Chay demo truoc.        |
 //+------------------------------------------------------------------+
 #property copyright "phong"
-#property version   "1.10"
+#property version   "1.20"
 #property description "Lenh dung chieu TP co dinh + ro DCA 2 chieu, chan bac 4/8/12 theo so lenh TP"
 
 #include <Trade\Trade.mqh>
@@ -63,6 +67,13 @@ input double InpBasketSLPercent  = 0.0; // Cat lo 1 ro khi lo >= % so du (0 = ta
 input double InpDailyLossPercent = 0.0; // Dong het, dung den het ngay khi lo >= % (0 = tat, giong bot goc)
 input double InpMaxSpread        = 0.5; // Spread toi da de mo lenh ($)
 
+input group "Bang lai lo (goc trai tren)"
+input bool     InpPanel       = true;  // Hien bang lai lo
+input bool     InpPanelEAOnly = false; // Chi tinh lenh cua EA (false = ca tai khoan)
+input datetime InpStartDate   = 0;     // Ngay bat dau (1970.01.01 = tu giao dich dau tien)
+input int      InpPanelX      = 10;    // Vi tri ngang (px)
+input int      InpPanelY      = 25;    // Vi tri doc (px)
+
 input group "Khac"
 input ulong InpMagic       = 20261001; // Magic ro DCA (lenh dung chieu = Magic + 1)
 input uint  InpDeviation   = 300;      // Do truot gia toi da (points)
@@ -95,6 +106,16 @@ datetime g_gateChecked[2];
 datetime g_day        = 0;
 double   g_dayBalance = 0.0;
 bool     g_halted     = false;
+
+#define PNL_PREFIX "DGP_"
+string   g_status[];          // cac dong trang thai EA trong o thu 3
+double   g_pDeposit   = 0.0;  // tong tien nap tu ngay bat dau
+double   g_pWithdraw  = 0.0;  // tong tien rut (so am)
+double   g_pResult    = 0.0;  // lai/lo da chot tu ngay bat dau
+double   g_pToday     = 0.0;  // lai/lo da chot hom nay
+datetime g_pStart     = 0;
+bool     g_pDirty     = true; // can doc lai lich su
+datetime g_pLastCalc  = 0;
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -143,13 +164,30 @@ int OnInit()
    g_pauseUntil = 0;
    g_day        = 0;
    g_halted     = false;
+   g_pDirty     = true;
+   if(InpPanel && !MQLInfoInteger(MQL_TESTER))
+      EventSetTimer(1); // cap nhat bang ca khi thi truong khong co tick
    return(INIT_SUCCEEDED);
   }
 
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
+   EventKillTimer();
+   ObjectsDeleteAll(0, PNL_PREFIX);
    Comment("");
+  }
+
+//+------------------------------------------------------------------+
+void OnTrade()
+  {
+   g_pDirty = true;
+  }
+
+//+------------------------------------------------------------------+
+void OnTimer()
+  {
+   DrawPanel();
   }
 
 //+------------------------------------------------------------------+
@@ -654,34 +692,285 @@ void ShowPanel(const Basket &buy, const Basket &sell, const int scalpBuy, const 
   {
    if(MQLInfoInteger(MQL_TESTER) && !MQLInfoInteger(MQL_VISUAL_MODE))
       return;
-   string s = StringFormat("XAU DualGrid | spread %s | %s\n",
-                           DoubleToString(tick.ask - tick.bid, _Digits),
-                           g_halted ? "DA DUNG (cham lo trong ngay)" : "DANG CHAY");
-   s += StringFormat("Lenh dung chieu (TP %.2f): BUY %d, SELL %d\n", InpScalpTP, scalpBuy, scalpSell);
-   s += BasketLine("Ro BUY ", POSITION_TYPE_BUY, buy);
-   s += BasketLine("Ro SELL", POSITION_TYPE_SELL, sell);
+//--- moi dong giu duoi 63 ky tu (gioi han chu cua OBJ_LABEL)
+   ArrayResize(g_status, 0);
+   AddStatus(StringFormat("EA: %s | spread %s", g_halted ? "DA DUNG (lo ngay)" : "DANG CHAY",
+                          DoubleToString(tick.ask - tick.bid, _Digits)));
+   AddStatus(StringFormat("Lenh dung chieu: BUY %d, SELL %d (TP %.2f)", scalpBuy, scalpSell, InpScalpTP));
+   BasketStatus("Ro BUY ", POSITION_TYPE_BUY, buy);
+   BasketStatus("Ro SELL", POSITION_TYPE_SELL, sell);
    if(InpDailyLossPercent > 0.0)
-      s += StringFormat("Dau ngay %.2f | dung khi Equity <= %.2f\n", g_dayBalance,
-                        g_dayBalance * (1.0 - InpDailyLossPercent / 100.0));
+      AddStatus(StringFormat("Dung khi Equity <= %.2f",
+                             g_dayBalance * (1.0 - InpDailyLossPercent / 100.0)));
+
+   if(InpPanel)
+     {
+      DrawPanel();
+      return;
+     }
+   string s = "";
+   for(int i = 0; i < ArraySize(g_status); i++)
+      s += g_status[i] + "\n";
    Comment(s);
   }
 
 //+------------------------------------------------------------------+
-string BasketLine(const string name, const ENUM_POSITION_TYPE type, const Basket &b)
+void BasketStatus(const string name, const ENUM_POSITION_TYPE type, const Basket &b)
   {
    if(b.count == 0)
-      return(name + ": trong\n");
-   int    level   = b.count + 1;
-   double step    = StepFor(level);
-   double next    = (type == POSITION_TYPE_BUY) ? b.edgePrice - step : b.edgePrice + step;
-   string nextTxt = (b.count < g_levels) ? DoubleToString(next, _Digits) : "het bac";
-   if(b.count < g_levels && IsGated(level))
-      nextTxt += StringFormat(" (can %d TP %s: %d/%d)", InpGateTPs, Side(Opposite(type)),
+     {
+      AddStatus(name + ": trong");
+      return;
+     }
+   AddStatus(StringFormat("%s: %d/%d bac, %.2f lot, TB %s, %+.2f", name, b.count, g_levels,
+                          b.volume, DoubleToString(b.avgPrice, _Digits), b.profit));
+   int    level = b.count + 1;
+   string next  = "het bac";
+   if(b.count < g_levels)
+     {
+      double step  = StepFor(level);
+      double price = (type == POSITION_TYPE_BUY) ? b.edgePrice - step : b.edgePrice + step;
+      next = "nhoi tiep " + DoubleToString(price, _Digits);
+      if(IsGated(level))
+         next += StringFormat(" (can %d TP %s: %d/%d)", InpGateTPs, Side(Opposite(type)),
                               GateCount(type, b), InpGateTPs);
-   return(StringFormat("%s: %d/%d bac, %.2f lot, TB %s, P/L %+.2f, nhoi tiep %s%s\n",
-                       name, b.count, g_levels, b.volume,
-                       DoubleToString(b.avgPrice, _Digits), b.profit, nextTxt,
-                       g_trailOn[Idx(type)] ? ", TRAILING" : ""));
+     }
+   if(g_trailOn[Idx(type)])
+      next += ", TRAILING";
+   AddStatus("   " + next);
+  }
+
+//+------------------------------------------------------------------+
+void AddStatus(const string line)
+  {
+   int n = ArraySize(g_status);
+   ArrayResize(g_status, n + 1);
+   g_status[n] = line;
+  }
+
+//+------------------------------------------------------------------+
+//| Bang lai lo goc trai tren: 2 o so lieu + 1 o trang thai EA        |
+//+------------------------------------------------------------------+
+void DrawPanel()
+  {
+   if(!InpPanel || (MQLInfoInteger(MQL_TESTER) && !MQLInfoInteger(MQL_VISUAL_MODE)))
+      return;
+   CalcPanelHistory();
+   double floating = PanelFloating();
+
+   const color dim   = C'150,162,185';
+   const color label = C'175,186,206';
+   int x   = InpPanelX;
+   int w   = 340;
+   int row = 24;
+
+//--- o 1: nap, ket qua, rut, ngay bat dau
+   int y = InpPanelY;
+   PanelBox("b1", x, y, w, 4 * row + 12);
+   int ry = y + 8;
+   PanelRow("r1", x, ry, w, ShortToString(0x25C6), dim, "Gia tri dau vao", label,
+            FormatMoney(g_pDeposit), clrWhite);
+   ry += row;
+   PanelRow("r2", x, ry, w, ShortToString(0x25B2), PlColor(g_pResult), "Ket qua", C'120,220,170',
+            FormatMoney(g_pResult), PlColor(g_pResult));
+   ry += row;
+   PanelRow("r3", x, ry, w, ShortToString(0x25A0), C'255,190,40', "Gia tri dau ra", C'255,200,90',
+            FormatMoney(g_pWithdraw), C'255,90,90');
+   ry += row;
+   PanelRow("r4", x, ry, w, ShortToString(0x25A1), C'130,175,255', "Ngay bat dau", C'140,180,255',
+            FormatDate(g_pStart), C'140,180,255');
+
+//--- o 2: hom nay, dang tha noi
+   y += 4 * row + 12 + 8;
+   PanelBox("b2", x, y, w, 2 * row + 12);
+   ry = y + 8;
+   PanelRow("r5", x, ry, w, ShortToString(0x25B2), dim, "Ket qua hom nay", label,
+            FormatMoney(g_pToday), PlColor(g_pToday));
+   ry += row;
+   PanelRow("r6", x, ry, w, ShortToString(0x25CF), dim, "Trang thai hien tai", label,
+            FormatMoney(floating), PlColor(floating));
+
+//--- o 3: trang thai EA
+   int lines = ArraySize(g_status);
+   int lh    = 16;
+   y += 2 * row + 12 + 8;
+   PanelBox("b3", x, y, w, lines * lh + 12);
+   for(int i = 0; i < lines; i++)
+      PanelText("s" + IntegerToString(i), x + 12, y + 6 + i * lh, g_status[i], C'190,200,215', 8,
+                "Consolas", ANCHOR_LEFT_UPPER);
+   for(int i = lines; i < 12; i++)
+      ObjectDelete(0, PNL_PREFIX + "s" + IntegerToString(i));
+   ChartRedraw(0);
+  }
+
+//+------------------------------------------------------------------+
+//| Doc lich su: nap, rut, lai/lo da chot (tong va hom nay).          |
+//| Chi doc lai khi co giao dich moi hoac moi 30 giay                 |
+//+------------------------------------------------------------------+
+void CalcPanelHistory()
+  {
+   datetime now = TimeCurrent();
+   if(!g_pDirty && (long)(now - g_pLastCalc) < 30)
+      return;
+   g_pDirty    = false;
+   g_pLastCalc = now;
+   g_pDeposit  = 0.0;
+   g_pWithdraw = 0.0;
+   g_pResult   = 0.0;
+   g_pToday    = 0.0;
+   g_pStart    = InpStartDate;
+   if(!HistorySelect(InpStartDate, now + 86400))
+      return;
+
+   MqlDateTime t;
+   TimeToStruct(now, t);
+   t.hour = 0;
+   t.min  = 0;
+   t.sec  = 0;
+   datetime today = StructToTime(t);
+
+   int n = HistoryDealsTotal();
+   for(int i = 0; i < n; i++)
+     {
+      ulong deal = HistoryDealGetTicket(i);
+      if(deal == 0)
+         continue;
+      long     type   = HistoryDealGetInteger(deal, DEAL_TYPE);
+      datetime time   = (datetime)HistoryDealGetInteger(deal, DEAL_TIME);
+      double   profit = HistoryDealGetDouble(deal, DEAL_PROFIT);
+      if(InpStartDate <= 0 && (g_pStart <= 0 || time < g_pStart))
+         g_pStart = time;
+      if(type == DEAL_TYPE_BALANCE)
+        {
+         if(profit > 0.0)
+            g_pDeposit += profit;
+         else
+            g_pWithdraw += profit;
+         continue;
+        }
+      if(type != DEAL_TYPE_BUY && type != DEAL_TYPE_SELL)
+         continue;
+      if(InpPanelEAOnly)
+        {
+         ulong magic = (ulong)HistoryDealGetInteger(deal, DEAL_MAGIC);
+         if(magic != InpMagic && magic != g_scalpMagic)
+            continue;
+        }
+      double pl = profit + HistoryDealGetDouble(deal, DEAL_SWAP)
+                  + HistoryDealGetDouble(deal, DEAL_COMMISSION);
+      g_pResult += pl;
+      if(time >= today)
+         g_pToday += pl;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Lai/lo dang tha noi                                               |
+//+------------------------------------------------------------------+
+double PanelFloating()
+  {
+   if(!InpPanelEAOnly)
+      return(AccountInfoDouble(ACCOUNT_PROFIT));
+   double sum = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0)
+         continue;
+      ulong magic = (ulong)PositionGetInteger(POSITION_MAGIC);
+      if(magic == InpMagic || magic == g_scalpMagic)
+         sum += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+     }
+   return(sum);
+  }
+
+//+------------------------------------------------------------------+
+void PanelRow(const string key, const int x, const int y, const int w,
+              const string icon, const color iconClr, const string text, const color textClr,
+              const string value, const color valueClr)
+  {
+   PanelText(key + "i", x + 12, y + 1, icon, iconClr, 9, "Segoe UI Symbol", ANCHOR_LEFT_UPPER);
+   PanelText(key + "l", x + 32, y, text, textClr, 10, "Segoe UI", ANCHOR_LEFT_UPPER);
+   PanelText(key + "v", x + w - 12, y, value, valueClr, 10, "Segoe UI Semibold", ANCHOR_RIGHT_UPPER);
+  }
+
+//+------------------------------------------------------------------+
+void PanelBox(const string name, const int x, const int y, const int w, const int h)
+  {
+   string id = PNL_PREFIX + name;
+   if(ObjectFind(0, id) < 0)
+     {
+      ObjectCreate(0, id, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, id, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, id, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSetInteger(0, id, OBJPROP_BGCOLOR, C'16,26,48');
+      ObjectSetInteger(0, id, OBJPROP_COLOR, C'52,74,115');
+      ObjectSetInteger(0, id, OBJPROP_BACK, false);
+      ObjectSetInteger(0, id, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, id, OBJPROP_HIDDEN, true);
+     }
+   ObjectSetInteger(0, id, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, id, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, id, OBJPROP_XSIZE, w);
+   ObjectSetInteger(0, id, OBJPROP_YSIZE, h);
+  }
+
+//+------------------------------------------------------------------+
+void PanelText(const string name, const int x, const int y, const string text, const color clr,
+               const int size, const string font, const ENUM_ANCHOR_POINT anchor)
+  {
+   string id = PNL_PREFIX + name;
+   if(ObjectFind(0, id) < 0)
+     {
+      ObjectCreate(0, id, OBJ_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, id, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, id, OBJPROP_BACK, false);
+      ObjectSetInteger(0, id, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, id, OBJPROP_HIDDEN, true);
+     }
+   ObjectSetInteger(0, id, OBJPROP_ANCHOR, anchor);
+   ObjectSetInteger(0, id, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, id, OBJPROP_YDISTANCE, y);
+   ObjectSetString(0, id, OBJPROP_TEXT, text);
+   ObjectSetString(0, id, OBJPROP_FONT, font);
+   ObjectSetInteger(0, id, OBJPROP_FONTSIZE, size);
+   ObjectSetInteger(0, id, OBJPROP_COLOR, clr);
+  }
+
+//+------------------------------------------------------------------+
+color PlColor(const double v)
+  {
+   return((v >= 0.0) ? C'40,210,120' : C'255,90,90');
+  }
+
+//+------------------------------------------------------------------+
+//| 1234567.8 -> "1,234,567.80"                                       |
+//+------------------------------------------------------------------+
+string FormatMoney(const double v)
+  {
+   string s   = DoubleToString(MathAbs(v), 2);
+   int    dot = StringFind(s, ".");
+   string ip  = (dot >= 0) ? StringSubstr(s, 0, dot) : s;
+   string fp  = (dot >= 0) ? StringSubstr(s, dot) : "";
+   string out = "";
+   int    len = StringLen(ip);
+   for(int i = 0; i < len; i++)
+     {
+      if(i > 0 && (len - i) % 3 == 0)
+         out += ",";
+      out += StringSubstr(ip, i, 1);
+     }
+   return(((v <= -0.005) ? "-" : "") + out + fp);
+  }
+
+//+------------------------------------------------------------------+
+string FormatDate(const datetime t)
+  {
+   if(t <= 0)
+      return("-");
+   MqlDateTime d;
+   TimeToStruct(t, d);
+   return(StringFormat("%02d/%02d/%04d", d.day, d.mon, d.year));
   }
 
 //+------------------------------------------------------------------+
