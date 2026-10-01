@@ -5,9 +5,9 @@
 //|  Logic (suy ra tu lich su lenh cua bot dang theo doi):            |
 //|   1. Moi khi co nen moi: mo 1 lenh "moi" (bac 1) theo huong cay   |
 //|      nen vua dong, neu ro cung chieu dang trong.                  |
-//|   2. Gia di nguoc lenh xa nhat cua ro >= GridStep: nhoi bac tiep  |
-//|      theo voi lot lon hon (mac dinh 0.01/0.02/0.03/0.04/0.1,      |
-//|      roi chuoi cuu ro 1/2/4).                                     |
+//|   2. Gia di nguoc lenh xa nhat cua ro: nhoi bac tiep theo voi lot |
+//|      lon hon. Mac dinh giong bot goc: 0.01/0.02/0.03/0.04/0.1/    |
+//|      0.2/0.3/0.6 cach nhau $3, roi 1/2/4 lot cach nhau $5.        |
 //|   3. Ro BUY va ro SELL chay doc lap, nen thuong co lenh 2 chieu.  |
 //|   4. Chot ca ro bang trailing tinh tu gia trung binh cua ro.      |
 //|                                                                   |
@@ -20,8 +20,8 @@
 //|  MT5 may tinh hoac VPS, khong chay tren app dien thoai.           |
 //|                                                                   |
 //|  CANH BAO: luoi nhoi lenh thang nho thuong xuyen nhung co the     |
-//|  thua lon khi gia chay mot mach. Ro day 8 bac = 7.2 lot: moi $1   |
-//|  gia di nguoc = 720 USC (tai khoan cent). Chay demo truoc.        |
+//|  thua lon khi gia chay mot mach. Ro day 11 bac = 8.3 lot: moi $1  |
+//|  gia di nguoc = 830 USC (tai khoan cent). Chay demo truoc.        |
 //+------------------------------------------------------------------+
 #property copyright "phong"
 #property version   "1.00"
@@ -34,10 +34,12 @@ input ENUM_TIMEFRAMES InpSignalTF  = PERIOD_M1; // Khung nen tao lenh moi
 input double          InpMinBody   = 0.0;       // Than nen toi thieu ($), 0 = moi nen
 
 input group "Luoi nhoi lenh"
-input string InpLots      = "0.01,0.02,0.03,0.04,0.1,1,2,4"; // Day lot theo bac
-input double InpLotScale  = 1.0;                              // He so nhan day lot
-input int    InpMaxLevels = 8;                                // So bac toi da moi ro
-input double InpGridStep  = 3.0;                       // Khoang cach nhoi lenh ($)
+input string InpLots           = "0.01,0.02,0.03,0.04,0.1,0.2,0.3,0.6,1,2,4"; // Day lot theo bac
+input double InpLotScale       = 1.0;  // He so nhan day lot
+input int    InpMaxLevels      = 11;   // So bac toi da moi ro
+input double InpGridStep       = 3.0;  // Khoang cach nhoi lenh ($)
+input double InpGridStep2      = 5.0;  // Khoang cach nhoi cho bac lon ($)
+input int    InpStep2FromLevel = 9;    // Tu bac nay dung khoang cach lon
 
 input group "Chot loi ro (trailing tu gia trung binh)"
 input double InpTrailStart    = 1.0; // Bat trailing khi gia vuot gia TB ($)
@@ -84,10 +86,11 @@ int OnInit()
       return(INIT_PARAMETERS_INCORRECT);
      }
    g_levels = MathMin(InpMaxLevels, ArraySize(g_lots));
-   if(g_levels < 1 || InpGridStep <= 0.0 || InpTrailStart <= 0.0 ||
-      InpTrailDistance <= 0.0 || InpTrailDistance >= InpTrailStart)
+   if(g_levels < 1 || InpGridStep <= 0.0 || InpGridStep2 <= 0.0 || InpStep2FromLevel < 2 ||
+      InpTrailStart <= 0.0 || InpTrailDistance <= 0.0 || InpTrailDistance >= InpTrailStart)
      {
-      Print("Tham so khong hop le: can MaxLevels >= 1, GridStep > 0, 0 < TrailDistance < TrailStart");
+      Print("Tham so khong hop le: can MaxLevels >= 1, GridStep > 0, GridStep2 > 0, ",
+            "Step2FromLevel >= 2, 0 < TrailDistance < TrailStart");
       return(INIT_PARAMETERS_INCORRECT);
      }
    if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
@@ -193,18 +196,27 @@ void OpenStarter(const Basket &buy, const Basket &sell)
   }
 
 //+------------------------------------------------------------------+
-//| Nhoi bac tiep theo khi gia di nguoc lenh xa nhat >= GridStep      |
+//| Nhoi bac tiep theo khi gia di nguoc lenh xa nhat >= StepFor()     |
 //+------------------------------------------------------------------+
 void AddLevel(const ENUM_POSITION_TYPE type, const Basket &b, const MqlTick &tick)
   {
    if(b.count == 0 || b.count >= g_levels)
       return;
-   double lot = g_lots[b.count];
-   if(type == POSITION_TYPE_BUY && tick.ask <= b.edgePrice - InpGridStep)
+   double lot  = g_lots[b.count];
+   double step = StepFor(b.count + 1);
+   if(type == POSITION_TYPE_BUY && tick.ask <= b.edgePrice - step)
       OpenOrder(ORDER_TYPE_BUY, lot, b.count + 1);
    else
-      if(type == POSITION_TYPE_SELL && tick.bid >= b.edgePrice + InpGridStep)
+      if(type == POSITION_TYPE_SELL && tick.bid >= b.edgePrice + step)
          OpenOrder(ORDER_TYPE_SELL, lot, b.count + 1);
+  }
+
+//+------------------------------------------------------------------+
+//| Khoang cach tu lenh xa nhat den bac 'level' sap mo                |
+//+------------------------------------------------------------------+
+double StepFor(const int level)
+  {
+   return((level >= InpStep2FromLevel) ? InpGridStep2 : InpGridStep);
   }
 
 //+------------------------------------------------------------------+
@@ -468,7 +480,8 @@ string BasketLine(const string name, const ENUM_POSITION_TYPE type, const Basket
   {
    if(b.count == 0)
       return(name + ": trong\n");
-   double next    = (type == POSITION_TYPE_BUY) ? b.edgePrice - InpGridStep : b.edgePrice + InpGridStep;
+   double step    = StepFor(b.count + 1);
+   double next    = (type == POSITION_TYPE_BUY) ? b.edgePrice - step : b.edgePrice + step;
    string nextTxt = (b.count < g_levels) ? DoubleToString(next, _Digits) : "het bac";
    return(StringFormat("%s: %d/%d bac, %.2f lot, TB %s, P/L %+.2f, nhoi tiep %s%s\n",
                        name, b.count, g_levels, b.volume,
