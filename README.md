@@ -19,7 +19,7 @@ npm install
 | `npm run build:chalpha` | Render video dọc CH-Alpha Plus ra `out/chalpha.mp4` |
 | `npm run build:chalpha-stats` | Render video dọc CH-Alpha Plus bản số liệu ra `out/chalpha-stats.mp4` |
 | `npm run build:chalpha-kv` | Render motion từ hình key visual CH-Alpha Plus ra `out/chalpha-kv.mp4` |
-| `npm run build:chalpha-story` | Render video ghép liền mạch (khớp gối + key visual, ~19,6 giây) ra `out/chalpha-story.mp4` |
+| `npm run build:chalpha-story` | Render video ghép liền mạch (khớp gối + key visual, ~19 giây) ra `out/chalpha-story.mp4` |
 | `npm run lint` | Kiểm tra TypeScript |
 | `npm run upgrade` | Nâng cấp Remotion |
 
@@ -38,6 +38,7 @@ npm install
   - `Scenes.tsx` – 4 cảnh: mở đầu, giới thiệu sản phẩm, công dụng, kêu gọi mua
   - `StatsPromo.tsx` – bản thứ hai: ống thuốc tách nền (`public/chalpha/ampoule.png`) + số liệu 42% / 45% / 88% chuyển động
   - `StoryPromo.tsx` – video ghép liền mạch: mở đầu khớp gối đau → key visual giới thiệu sản phẩm → công dụng (sụn phục hồi) → quay lại key visual với thành phần + nút đặt hàng
+  - `Fx.tsx` – hiệu ứng dùng cho video ghép: sóng đau, rung khung hình, bùng sáng hồi phục, tia lấp lánh, light leak
   - `KeyVisualPromo.tsx` – motion từ nguyên tấm key visual (sản phẩm giữ nguyên trong ảnh, không tách nền); chỉ logo, cờ Đức và tiêu đề được tách lớp để chuyển động (`public/chalpha/kv/`)
 - `public/chalpha/product.png` – ảnh sản phẩm đã tách nền
 - `public/fonts/` – font đóng gói sẵn (SIL OFL) để render không cần mạng

@@ -125,21 +125,30 @@ const ProductShine: React.FC<{ sweeps: number[] }> = ({ sweeps }) => {
  * `pullback`: start close on the product and pull back to the full poster.
  * `settle`: start slightly zoomed in and ease back (used when returning to the poster).
  * Children are overlays placed in poster coordinates (they move with the camera).
+ * `fx` adds motion blur to the camera move and a light bloom as the titles come in.
  */
 export const KeyVisualStage: React.FC<{
   camera: "pullback" | "settle";
   animateTitles: boolean;
   sweeps: number[];
   duration: number;
+  fx?: boolean;
   children?: React.ReactNode;
-}> = ({ camera, animateTitles, sweeps, duration, children }) => {
+}> = ({ camera, animateTitles, sweeps, duration, fx = false, children }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   const pullback = camera === "pullback";
-  const u = pullback
-    ? interpolate(frame, [0, 80], [1, 0], { ...clamp, easing: Easing.inOut(Easing.cubic) })
-    : 0;
+  const pullbackAt = (f: number) =>
+    pullback
+      ? interpolate(f, [0, 80], [1, 0], { ...clamp, easing: Easing.inOut(Easing.cubic) })
+      : 0;
+  const u = pullbackAt(frame);
+  const motionBlur = fx ? Math.abs(u - pullbackAt(frame + 1)) * 50 : 0;
+  const bloom = (p: number) => {
+    const g = fx && animateTitles ? interpolate(p, [0, 0.5, 1], [0, 1, 0.15]) : 0;
+    return g > 0.01 ? `drop-shadow(0 0 ${18 * g}px rgba(255,255,255,${0.9 * g}))` : undefined;
+  };
   const settle = pullback
     ? 1
     : interpolate(frame, [0, 40], [1.1, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
@@ -158,6 +167,7 @@ export const KeyVisualStage: React.FC<{
   const line = (p: number): React.CSSProperties => ({
     clipPath: `inset(-20% ${(1 - p) * 100}% -20% 0)`,
     transform: `translateY(${(1 - p) * 18}px)`,
+    filter: bloom(p),
   });
 
   return (
@@ -169,6 +179,7 @@ export const KeyVisualStage: React.FC<{
           style={{
             transformOrigin: `${PRODUCT_CENTER.x}px ${PRODUCT_CENTER.y}px`,
             transform: `translate(${-46 * u}px, ${-200 * u}px) scale(${1 + 0.3 * u})`,
+            filter: motionBlur > 0.05 ? `blur(${motionBlur}px)` : undefined,
           }}
         >
           <Img src={kv("plate.jpg")} style={{ position: "absolute", width: 1080, height: 1920 }} />
@@ -176,7 +187,11 @@ export const KeyVisualStage: React.FC<{
           <ProductShine sweeps={sweeps} />
           <Layer
             name="logo"
-            style={{ opacity: logo, transform: `translateX(${(1 - logo) * -70}px)` }}
+            style={{
+              opacity: logo,
+              transform: `translateX(${(1 - logo) * -70}px)`,
+              filter: bloom(logo),
+            }}
           />
           <Layer
             name="badge"
@@ -340,13 +355,20 @@ export const KvIngredients: React.FC<{ start: number }> = ({ start }) => {
 };
 
 // Pack info and order button on the light floor below the product.
-export const KvCallToAction: React.FC<{ start: number }> = ({ start }) => {
+// `fx` adds a shimmer across the button and ripples radiating from it.
+export const KvCallToAction: React.FC<{ start: number; fx?: boolean }> = ({
+  start,
+  fx = false,
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pack = spring({ frame: frame - start, fps, config: { damping: 200 } });
   const button = spring({ frame: frame - start - 12, fps, config: { damping: 10 } });
   const pulseFrom = start + 30;
   const pulse = frame > pulseFrom ? 1 + Math.max(0, Math.sin((frame - pulseFrom) / 6)) * 0.05 : 1;
+  const since = frame - pulseFrom;
+  const ripples = fx ? [0, 18].filter((lag) => since >= lag).map((lag) => ((since - lag) % 36) / 36) : [];
+  const shimmer = interpolate(((frame - start - 20) % 50 + 50) % 50, [0, 30], [-60, 160], clamp);
   return (
     <div
       style={{
@@ -372,19 +394,44 @@ export const KvCallToAction: React.FC<{ start: number }> = ({ start }) => {
       >
         {CONTENT.pack}
       </div>
-      <div
-        style={{
-          fontSize: 50,
-          fontWeight: 800,
-          color: "white",
-          background: COLORS.red,
-          borderRadius: 999,
-          padding: "20px 72px",
-          boxShadow: "0 16px 36px rgba(215,20,26,0.35)",
-          transform: `scale(${button * pulse})`,
-        }}
-      >
-        {CONTENT.cta}
+      <div style={{ position: "relative", transform: `scale(${button * pulse})` }}>
+        {ripples.map((t, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 999,
+              border: `4px solid ${COLORS.red}`,
+              opacity: 0.6 * (1 - t),
+              transform: `scale(${1 + 0.18 * t}, ${1 + 0.5 * t})`,
+            }}
+          />
+        ))}
+        <div
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            fontSize: 50,
+            fontWeight: 800,
+            color: "white",
+            background: COLORS.red,
+            borderRadius: 999,
+            padding: "20px 72px",
+            boxShadow: "0 16px 36px rgba(215,20,26,0.35)",
+          }}
+        >
+          {CONTENT.cta}
+          {fx && frame > start + 20 && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: `linear-gradient(105deg, rgba(255,255,255,0) ${shimmer - 14}%, rgba(255,255,255,0.55) ${shimmer}%, rgba(255,255,255,0) ${shimmer + 14}%)`,
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
