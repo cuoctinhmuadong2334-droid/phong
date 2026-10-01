@@ -2,21 +2,18 @@
 //|                                                XAU_DualGrid.mq5  |
 //|  EA luoi 2 chieu cho XAUUSD, khung tin hieu M1                    |
 //|                                                                   |
-//|  Logic:                                                           |
-//|   1. Moi nen moi: mo lenh DUNG CHIEU (0.01) theo huong cay nen    |
-//|      vua dong, dat TP co dinh (mac dinh $1, nhu bot goc).         |
-//|   2. HEDGE khi gia giat ve: ro nao dang trong thi theo doi dinh/  |
-//|      day tu luc ro trong. Gia giat nguoc >= $0.7 (bat len tu day  |
-//|      -> SELL, giat xuong tu dinh -> BUY) thi mo bac 1 cua ro do.  |
-//|   3. Ro DCA: gia di nguoc lenh xa nhat thi nhoi bac tiep theo.    |
-//|      Mac dinh: 0.01/0.02/0.03/0.04/0.1/0.2/0.3/0.6 cach nhau $3,  |
-//|      roi 1/2/4 lot cach nhau $5.                                  |
-//|   4. (Tuy chon, mac dinh TAT nhu bot goc) chan bac 4, 8, 12...    |
-//|      can 3 lenh dung chieu TP. Bat bang InpGateEvery = 4.         |
-//|   5. Ro co tong lot LON NHAT: TP tong khi gia vuot gia TB $2.4    |
-//|      (nhu bot goc). Ro nho hon: trailing $1.                      |
-//|   Khoang cach nhoi do bang gia phia dong lenh (BUY theo Bid, SELL |
-//|   theo Ask) nhu bot goc, nen lenh thuc te cach nhau ~$2.7-3.     |
+//|  Logic (theo set doi_ngheo_ver_3 cua bot goc, 1 pip = $0.1):     |
+//|   1. Moi nen moi: neu ro cung huong nen dang trong thi mo lenh   |
+//|      dau 0.01 theo huong nen. Lenh don TP $1 (InpTP = 10).        |
+//|   2. Ro DCA: gia di nguoc lenh xa nhat thi nhoi bac tiep theo:    |
+//|      0.01/0.02/0.03/0.04/0.1/0.2/0.3/0.6 cach nhau $3,            |
+//|      roi 1/2/4/8/10 lot cach nhau $5 (Distance0=30, Distance1=50).|
+//|      Khoang cach do bang Bid (BUY) / Ask (SELL).                  |
+//|   3. Ro tu 2 lenh: TP ca ro khi gia vuot gia TB $1.5 (TPDCA=15).  |
+//|      Ro tung lo >= 1000 tien thi TP ha xuong $1.0 (ChangeTP).     |
+//|   4. BUY va SELL chay doc lap, khong hedge, khong cat lo.         |
+//|   Tuy chon (mac dinh TAT nhu bot goc): lenh dung chieu tach rieng,|
+//|   hedge khi gia giat ve, chan bac 4/8/12, trailing.               |
 //|   Magic: ro DCA = Magic, lenh dung chieu = Magic + 1.             |
 //|                                                                   |
 //|  Bang lai lo goc trai tren: tien nap, ket qua (lai/lo da chot),   |
@@ -36,8 +33,8 @@
 //|  gia di nguoc = 830 USC (tai khoan cent). Chay demo truoc.        |
 //+------------------------------------------------------------------+
 #property copyright "phong"
-#property version   "1.50"
-#property description "Lenh dung chieu TP + hedge khi gia giat ve + ro DCA 2 chieu, TP tong $4 cho ro lon nhat"
+#property version   "1.60"
+#property description "Ro DCA 2 chieu theo set bot goc: lenh don TP $1, ro TP $1.5 tu gia TB"
 
 #include <Trade\Trade.mqh>
 
@@ -45,18 +42,20 @@ input group "Tin hieu nen moi"
 input ENUM_TIMEFRAMES InpSignalTF  = PERIOD_M1; // Khung nen tao lenh
 input double          InpMinBody   = 0.0;       // Than nen toi thieu ($), 0 = moi nen
 
-input group "Lenh dung chieu (theo huong nen, TP co dinh)"
-input double InpScalpLot = 0.01; // Lot lenh dung chieu
-input double InpScalpTP  = 1.0;  // TP lenh dung chieu ($)
-input int    InpScalpMax = 1;    // So lenh dung chieu chua TP toi da moi chieu
+input group "Lenh dau"
+input double InpScalpTP  = 1.0;   // TP lenh don ($) - bot goc InpTP = 10
+input bool   InpUseScalp = false; // Tach lenh dung chieu rieng (magic+1), bot goc: false
+input double InpScalpLot = 0.01;  // Lot lenh dung chieu (khi tach rieng)
+input int    InpScalpMax = 1;     // So lenh dung chieu chua TP toi da moi chieu
 
-input group "Hedge khi gia giat ve (mo bac 1 cua ro dang trong)"
-input double InpHedgePullback = 0.7; // Gia giat nguoc tu dinh/day ($)
+input group "Hedge khi gia giat ve (bot goc: tat)"
+input bool   InpUseHedge      = false; // Bat hedge: ro trong mo bac 1 khi gia giat ve
+input double InpHedgePullback = 0.7;   // Gia giat nguoc tu dinh/day ($)
 
 input group "Ro DCA"
-input string InpLots           = "0.01,0.02,0.03,0.04,0.1,0.2,0.3,0.6,1,2,4"; // Day lot theo bac
+input string InpLots           = "0.01,0.02,0.03,0.04,0.1,0.2,0.3,0.6,1,2,4,8,10"; // Day lot theo bac
 input double InpLotScale       = 1.0;  // He so nhan day lot
-input int    InpMaxLevels      = 11;   // So bac toi da moi ro
+input int    InpMaxLevels      = 13;   // So bac toi da moi ro
 input double InpGridStep       = 3.0;  // Khoang cach nhoi lenh ($)
 input double InpGridStep2      = 5.0;  // Khoang cach nhoi cho bac lon ($)
 input int    InpStep2FromLevel = 9;    // Tu bac nay dung khoang cach lon
@@ -65,10 +64,13 @@ input group "Chan DCA: bac 4, 8, 12... can lenh dung chieu TP"
 input int InpGateEvery = 0; // Chan cac bac chia het cho so nay (0 = tat, nhu bot goc)
 input int InpGateTPs   = 3; // So lenh dung chieu TP can co ke tu bac truoc
 
-input group "Chot loi ro DCA"
-input double InpBigTP         = 2.4; // TP tong ro lon nhat: gia vuot gia TB ($), 0 = dung trailing
-input double InpTrailStart    = 1.0; // Ro nho hon: bat trailing khi gia vuot gia TB ($)
-input double InpTrailDistance = 0.4; // Ro nho hon: dong ro khi gia lui lai tu dinh ($)
+input group "Chot loi ro DCA (nhu bot goc)"
+input double InpTPDCA         = 1.5;     // TP ca ro tu gia TB ($) - TPDCA = 15
+input double InpLossChangeTP  = -1000.0; // Ro tung lo toi muc nay (tien) thi doi TP, 0 = tat
+input double InpTPDCAChange   = 1.0;     // TP ca ro sau khi doi ($) - TPDCAChange = 10
+input bool   InpUseTrailing   = false;   // Dung trailing thay TP co dinh (bot goc: false)
+input double InpTrailStart    = 1.0;     // Trailing: bat khi gia vuot gia TB ($)
+input double InpTrailDistance = 0.4;     // Trailing: dong ro khi gia lui lai tu dinh ($)
 
 input group "Quan ly rui ro"
 input double InpBasketSLPercent  = 0.0; // Cat lo 1 ro khi lo >= % so du (0 = tat, giong bot goc)
@@ -114,6 +116,7 @@ datetime g_gateChecked[2];
 datetime g_day        = 0;
 double   g_dayBalance = 0.0;
 bool     g_halted     = false;
+bool     g_lossFlag[2];       // ro da tung lo toi InpLossChangeTP
 bool     g_extOn[2];          // ro trong dang theo doi dinh/day de hedge
 double   g_ext[2];            // [0] = dinh (ro BUY cho gia giat xuong), [1] = day (ro SELL)
 
@@ -140,11 +143,11 @@ int OnInit()
    if(g_levels < 1 || InpGridStep <= 0.0 || InpGridStep2 <= 0.0 || InpStep2FromLevel < 2 ||
       InpTrailStart <= 0.0 || InpTrailDistance <= 0.0 || InpTrailDistance >= InpTrailStart ||
       g_scalpLot <= 0.0 || InpScalpTP <= 0.0 || InpScalpMax < 1 ||
-      InpGateEvery < 0 || InpGateTPs < 0 || InpHedgePullback <= 0.0 || InpBigTP < 0.0)
+      InpGateEvery < 0 || InpGateTPs < 0 || InpHedgePullback <= 0.0 || InpTPDCA <= 0.0 || InpTPDCAChange <= 0.0)
      {
       Print("Tham so khong hop le: can MaxLevels >= 1, GridStep > 0, GridStep2 > 0, ",
             "Step2FromLevel >= 2, 0 < TrailDistance < TrailStart, ScalpLot > 0, ScalpTP > 0, ",
-            "ScalpMax >= 1, GateEvery >= 0, GateTPs >= 0, HedgePullback > 0, BigTP >= 0");
+            "ScalpMax >= 1, GateEvery >= 0, GateTPs >= 0, HedgePullback > 0, TPDCA > 0, TPDCAChange > 0");
       return(INIT_PARAMETERS_INCORRECT);
      }
    if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
@@ -168,6 +171,7 @@ int OnInit()
       g_gateCount[k]   = 0;
       g_gateChecked[k] = 0;
       g_extOn[k]       = false;
+      g_lossFlag[k]    = false;
       g_ext[k]         = 0.0;
      }
    for(int k = 0; k < 4; k++)
@@ -232,8 +236,8 @@ void OnTick()
    EnsureScalpTP(tick);
 
 //--- 3. Chot loi / cat lo tung ro DCA; neu vua dong thi doi tick sau quet lai
-   bool closedBuy  = ManageExit(POSITION_TYPE_BUY, buy, IsBig(buy, sell), tick);
-   bool closedSell = ManageExit(POSITION_TYPE_SELL, sell, IsBig(sell, buy), tick);
+   bool closedBuy  = ManageExit(POSITION_TYPE_BUY, buy, tick);
+   bool closedSell = ManageExit(POSITION_TYPE_SELL, sell, tick);
    if(closedBuy || closedSell)
      {
       ShowPanel(buy, sell, scalpBuy, scalpSell, tick);
@@ -246,11 +250,14 @@ void OnTick()
      {
       AddLevel(POSITION_TYPE_BUY, buy, tick);
       AddLevel(POSITION_TYPE_SELL, sell, tick);
-      CheckHedge(POSITION_TYPE_BUY, buy, tick);
-      CheckHedge(POSITION_TYPE_SELL, sell, tick);
+      if(InpUseHedge)
+        {
+         CheckHedge(POSITION_TYPE_BUY, buy, tick);
+         CheckHedge(POSITION_TYPE_SELL, sell, tick);
+        }
      }
 
-//--- 5. Nen moi: lenh dung chieu
+//--- 5. Nen moi: lenh dau theo huong nen
    datetime bar = iTime(_Symbol, InpSignalTF, 0);
    if(bar > 0)
      {
@@ -267,7 +274,7 @@ void OnTick()
   }
 
 //+------------------------------------------------------------------+
-//| Mo lenh dung chieu theo huong nen vua dong                        |
+//| Mo lenh dau theo huong nen vua dong                               |
 //+------------------------------------------------------------------+
 void HandleNewBar(const Basket &buy, const Basket &sell, const int scalpBuy, const int scalpSell)
   {
@@ -279,10 +286,19 @@ void HandleNewBar(const Basket &buy, const Basket &sell, const int scalpBuy, con
    if(body == 0.0 || MathAbs(body) < InpMinBody)
       return;
 
-   if(body > 0.0 && scalpBuy < InpScalpMax)
-      OpenScalp(ORDER_TYPE_BUY);
-   if(body < 0.0 && scalpSell < InpScalpMax)
-      OpenScalp(ORDER_TYPE_SELL);
+   if(InpUseScalp)
+     {
+      if(body > 0.0 && scalpBuy < InpScalpMax)
+         OpenScalp(ORDER_TYPE_BUY);
+      if(body < 0.0 && scalpSell < InpScalpMax)
+         OpenScalp(ORDER_TYPE_SELL);
+      return;
+     }
+//--- nhu bot goc: lenh dau la bac 1 cua ro cung huong nen
+   if(body > 0.0 && buy.count == 0)
+      OpenDca(ORDER_TYPE_BUY, g_lots[0], 1);
+   if(body < 0.0 && sell.count == 0)
+      OpenDca(ORDER_TYPE_SELL, g_lots[0], 1);
   }
 
 //+------------------------------------------------------------------+
@@ -313,14 +329,6 @@ void CheckHedge(const ENUM_POSITION_TYPE type, const Basket &b, const MqlTick &t
       if(tick.bid >= g_ext[k] + InpHedgePullback && OpenDca(ORDER_TYPE_SELL, g_lots[0], 1))
          g_extOn[k] = false;
      }
-  }
-
-//+------------------------------------------------------------------+
-//| Ro co tong lot lon hon han ro con lai (ro kia co the trong)       |
-//+------------------------------------------------------------------+
-bool IsBig(const Basket &b, const Basket &other)
-  {
-   return(b.count > 0 && b.volume > other.volume + 1e-8);
   }
 
 //+------------------------------------------------------------------+
@@ -401,13 +409,14 @@ int CountScalpWinsSince(const datetime from, const ENUM_POSITION_TYPE scalpType)
 //| Cat lo ro theo % so du, chot loi ro bang trailing tu gia TB       |
 //| Tra ve true neu da ra lenh dong ro                                |
 //+------------------------------------------------------------------+
-bool ManageExit(const ENUM_POSITION_TYPE type, const Basket &b, const bool isBig, const MqlTick &tick)
+bool ManageExit(const ENUM_POSITION_TYPE type, const Basket &b, const MqlTick &tick)
   {
    int k = Idx(type);
    if(b.count == 0)
      {
-      g_trailOn[k] = false;
-      g_peak[k]    = 0.0;
+      g_trailOn[k]  = false;
+      g_peak[k]     = 0.0;
+      g_lossFlag[k] = false;
       return(false);
      }
 
@@ -426,16 +435,23 @@ bool ManageExit(const ENUM_POSITION_TYPE type, const Basket &b, const bool isBig
 
    double gain = (type == POSITION_TYPE_BUY) ? tick.bid - b.avgPrice : b.avgPrice - tick.ask;
 
-//--- ro lon nhat: TP tong co dinh, khong trailing
-   if(isBig && InpBigTP > 0.0)
+   if(InpLossChangeTP < 0.0 && b.profit <= InpLossChangeTP)
+      g_lossFlag[k] = true;
+
+//--- nhu bot goc: TP co dinh tinh tu gia trung binh
+   if(!InpUseTrailing)
      {
       g_trailOn[k] = false;
       g_peak[k]    = 0.0;
-      if(gain < InpBigTP)
+      if(gain < BasketTP(type, b))
          return(false);
       if(CloseBasket(type))
-         Notify(StringFormat("%s: TP tong ro %s %d lenh, %.2f lot, P/L ~ %+.2f",
-                             _Symbol, Side(type), b.count, b.volume, b.profit));
+        {
+         if(b.count >= InpNotifyLevel)
+            Notify(StringFormat("%s: TP ro %s %d lenh, %.2f lot, P/L ~ %+.2f",
+                                _Symbol, Side(type), b.count, b.volume, b.profit));
+         g_lossFlag[k] = false;
+        }
       return(true);
      }
 
@@ -462,6 +478,17 @@ bool ManageExit(const ENUM_POSITION_TYPE type, const Basket &b, const bool isBig
       g_peak[k]    = 0.0;
      }
    return(true);
+  }
+
+//+------------------------------------------------------------------+
+//| Muc TP ($ tu gia TB): lenh don = InpScalpTP, ro = InpTPDCA, ro    |
+//| tung lo toi InpLossChangeTP = InpTPDCAChange                      |
+//+------------------------------------------------------------------+
+double BasketTP(const ENUM_POSITION_TYPE type, const Basket &b)
+  {
+   if(b.count <= 1)
+      return(InpScalpTP);
+   return(g_lossFlag[Idx(type)] ? InpTPDCAChange : InpTPDCA);
   }
 
 //+------------------------------------------------------------------+
@@ -755,9 +782,10 @@ void ShowPanel(const Basket &buy, const Basket &sell, const int scalpBuy, const 
    ArrayResize(g_status, 0);
    AddStatus(StringFormat("EA: %s | spread %s", g_halted ? "DA DUNG (lo ngay)" : "DANG CHAY",
                           DoubleToString(tick.ask - tick.bid, _Digits)));
-   AddStatus(StringFormat("Lenh dung chieu: BUY %d, SELL %d (TP %.2f)", scalpBuy, scalpSell, InpScalpTP));
-   BasketStatus("Ro BUY ", POSITION_TYPE_BUY, buy, IsBig(buy, sell));
-   BasketStatus("Ro SELL", POSITION_TYPE_SELL, sell, IsBig(sell, buy));
+   if(InpUseScalp)
+      AddStatus(StringFormat("Lenh dung chieu: BUY %d, SELL %d (TP %.2f)", scalpBuy, scalpSell, InpScalpTP));
+   BasketStatus("Ro BUY ", POSITION_TYPE_BUY, buy);
+   BasketStatus("Ro SELL", POSITION_TYPE_SELL, sell);
    if(InpDailyLossPercent > 0.0)
       AddStatus(StringFormat("Dung khi Equity <= %.2f",
                              g_dayBalance * (1.0 - InpDailyLossPercent / 100.0)));
@@ -774,7 +802,7 @@ void ShowPanel(const Basket &buy, const Basket &sell, const int scalpBuy, const 
   }
 
 //+------------------------------------------------------------------+
-void BasketStatus(const string name, const ENUM_POSITION_TYPE type, const Basket &b, const bool isBig)
+void BasketStatus(const string name, const ENUM_POSITION_TYPE type, const Basket &b)
   {
    int k = Idx(type);
    if(b.count == 0)
@@ -790,13 +818,14 @@ void BasketStatus(const string name, const ENUM_POSITION_TYPE type, const Basket
      }
    AddStatus(StringFormat("%s: %d/%d bac, %.2f lot, TB %s, %+.2f", name, b.count, g_levels,
                           b.volume, DoubleToString(b.avgPrice, _Digits), b.profit));
-   if(isBig && InpBigTP > 0.0)
+   if(!InpUseTrailing)
      {
-      double tpPrice = (type == POSITION_TYPE_BUY) ? b.avgPrice + InpBigTP : b.avgPrice - InpBigTP;
+      double tpDist  = BasketTP(type, b);
+      double tpPrice = (type == POSITION_TYPE_BUY) ? b.avgPrice + tpDist : b.avgPrice - tpDist;
       double money   = 0.0;
       OrderCalcProfit((type == POSITION_TYPE_BUY) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL, _Symbol,
                       b.volume, b.avgPrice, tpPrice, money);
-      AddStatus(StringFormat("   LON NHAT: TP tong tai %s (~%+.0f)",
+      AddStatus(StringFormat("   TP ro tai %s (~%+.0f)",
                              DoubleToString(tpPrice, _Digits), money));
      }
    int    level = b.count + 1;
