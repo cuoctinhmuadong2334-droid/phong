@@ -6,7 +6,8 @@
 //|   1. Moi khi co nen moi: mo 1 lenh "moi" (bac 1) theo huong cay   |
 //|      nen vua dong, neu ro cung chieu dang trong.                  |
 //|   2. Gia di nguoc lenh xa nhat cua ro >= GridStep: nhoi bac tiep  |
-//|      theo voi lot lon hon (mac dinh 0.01/0.02/0.03/0.04/0.1).     |
+//|      theo voi lot lon hon (mac dinh 0.01/0.02/0.03/0.04/0.1,      |
+//|      roi chuoi cuu ro 1/2/4).                                     |
 //|   3. Ro BUY va ro SELL chay doc lap, nen thuong co lenh 2 chieu.  |
 //|   4. Chot ca ro bang trailing tinh tu gia trung binh cua ro.      |
 //|                                                                   |
@@ -19,7 +20,8 @@
 //|  MT5 may tinh hoac VPS, khong chay tren app dien thoai.           |
 //|                                                                   |
 //|  CANH BAO: luoi nhoi lenh thang nho thuong xuyen nhung co the     |
-//|  thua lon khi gia chay mot mach. Chay demo truoc khi dung that.   |
+//|  thua lon khi gia chay mot mach. Ro day 8 bac = 7.2 lot: moi $1   |
+//|  gia di nguoc = 720 USC (tai khoan cent). Chay demo truoc.        |
 //+------------------------------------------------------------------+
 #property copyright "phong"
 #property version   "1.00"
@@ -32,9 +34,9 @@ input ENUM_TIMEFRAMES InpSignalTF  = PERIOD_M1; // Khung nen tao lenh moi
 input double          InpMinBody   = 0.0;       // Than nen toi thieu ($), 0 = moi nen
 
 input group "Luoi nhoi lenh"
-input string InpLots      = "0.01,0.02,0.03,0.04,0.1"; // Day lot theo bac
-input double InpLotScale  = 1.0;                       // He so nhan day lot
-input int    InpMaxLevels = 5;                         // So bac toi da moi ro
+input string InpLots      = "0.01,0.02,0.03,0.04,0.1,1,2,4"; // Day lot theo bac
+input double InpLotScale  = 1.0;                              // He so nhan day lot
+input int    InpMaxLevels = 8;                                // So bac toi da moi ro
 input double InpGridStep  = 3.0;                       // Khoang cach nhoi lenh ($)
 
 input group "Chot loi ro (trailing tu gia trung binh)"
