@@ -19,6 +19,8 @@
 //|     nhap so kieu vang, EA nhan he so cho ma dang chay             |
 //|   - Lot goc tu nang len lot nho nhat cua san (vd USTEC 0.05) de   |
 //|     day lot DCA khong bi dong thanh nhieu lenh bang nhau          |
+//|   - Gioi han lot = 0 -> theo gioi han cua san; kiem tra ky quy    |
+//|     truoc moi lenh DCA                                            |
 //+------------------------------------------------------------------+
 #property copyright "Custom EA"
 #property version   "4.03"
@@ -54,8 +56,8 @@ input int      InpMaxDCAOrders    = 10;      // So lenh toi da trong 1 basket (a
 input ELotMode InpLotMode         = LOT_MODE_MULTIPLY; // Kieu tang lot cho cac lenh DCA
 input double   InpLotMultiplier   = 2.5;     // Chi dung cho kieu PHAN TANG: lot lenh sau = lot lenh truoc x he so nay
 input double   InpLotLinearStep   = 0.01;    // Chi dung cho kieu TANG DEU: moi lenh cong them bao nhieu lot
-input double   InpMaxLotPerOrder  = 4.5;     // Lot toi da cho phep cho 1 lenh (chan tran)
-input double   InpMaxTotalLot     = 10.0;    // Tong lot toi da cho toan bo basket; dat muc nay se ngung DCA them (van giu lenh cu cho TP)
+input double   InpMaxLotPerOrder  = 4.5;     // Lot toi da cho 1 lenh (chan tran); 0 = theo gioi han cua san
+input double   InpMaxTotalLot     = 10.0;    // Tong lot toi da cho basket, dat muc nay ngung DCA (giu lenh cu cho TP); 0 = theo gioi han cua san
 
 input group "== Tam dung DCA khi gia bien dong manh =="
 input bool   InpUseVolatilityPause     = true;  // Bat tam dung DCA khi gia truot qua nhanh
@@ -1026,9 +1028,9 @@ void CheckDCA(ENUM_POSITION_TYPE type)
    // Lot cho lenh tiep theo, theo kieu da chon o InpLotMode
    double nextLot = CalcNextLot(count);
 
-   // Neu vao them lenh nay se lam tong lot basket vuot InpMaxTotalLot -> dung DCA, giu lenh cu cho TP
+   // Neu vao them lenh nay se lam tong lot basket vuot gioi han -> dung DCA, giu lenh cu cho TP
    double currentTotalLot = GetBasketTotalLot(type);
-   if(currentTotalLot + nextLot > InpMaxTotalLot)
+   if(currentTotalLot + nextLot > MaxTotalLot())
       return;
 
    if(type == POSITION_TYPE_BUY)
@@ -1037,6 +1039,8 @@ void CheckDCA(ENUM_POSITION_TYPE type)
       if(ask <= NormalizeDouble(lastPrice - DistDCA(), digits))
         {
          // Dat TP ngay tu luc mo: tinh truoc gia TB sau khi co lenh nay
+         if(!HasMarginFor(ORDER_TYPE_BUY, nextLot, ask))
+            return;
          double tpNew = InpUseBrokerTP ? PredictBasketTP(POSITION_TYPE_BUY, nextLot, ask) : 0.0;
          if(trade.Buy(nextLot, _Symbol, ask, 0, tpNew, "DCA Buy") && TradeOK())
            {
@@ -1050,6 +1054,8 @@ void CheckDCA(ENUM_POSITION_TYPE type)
       // Gia di nguoc (tang) InpDCADistance so voi lenh xa nhat -> ban them
       if(bid >= NormalizeDouble(lastPrice + DistDCA(), digits))
         {
+         if(!HasMarginFor(ORDER_TYPE_SELL, nextLot, bid))
+            return;
          double tpNew = InpUseBrokerTP ? PredictBasketTP(POSITION_TYPE_SELL, nextLot, bid) : 0.0;
          if(trade.Sell(nextLot, _Symbol, bid, 0, tpNew, "DCA Sell") && TradeOK())
            {
@@ -1112,7 +1118,8 @@ double CalcNextLot(int count)
          break;
      }
 
-   if(raw > InpMaxLotPerOrder)
+   // 0 = khong chan rieng, NormalizeLot se kep theo lot toi da cua san
+   if(InpMaxLotPerOrder > 0.0 && raw > InpMaxLotPerOrder)
       raw = InpMaxLotPerOrder;
 
    return NormalizeLot(raw);
@@ -2272,6 +2279,40 @@ double DistDCA()      { return InpDCADistance          * g_scale; }
 double DistVolMove()  { return InpMaxPriceMoveInWindow * g_scale; }
 double DistFastMove() { return InpFastMoveDistance     * g_scale; }
 double DistTPPrice()  { return InpTPPrice              * g_scale; }
+
+//+------------------------------------------------------------------+
+//| Tong lot toi da cua basket: InpMaxTotalLot, hoac neu = 0 thi theo  |
+//| gioi han tong khoi luong 1 chieu cua san (0 = san khong gioi han)  |
+//+------------------------------------------------------------------+
+double MaxTotalLot()
+  {
+   if(InpMaxTotalLot > 0.0)
+      return InpMaxTotalLot;
+   double brokerLimit = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_LIMIT);
+   return (brokerLimit > 0.0) ? brokerLimit : DBL_MAX;
+  }
+
+//+------------------------------------------------------------------+
+//| Du ky quy de mo lenh DCA nay khong. Khong du -> bo qua va bao log  |
+//| toi da 1 lan/phut, tranh gui lenh loi lien tuc khi khong lo lot.   |
+//+------------------------------------------------------------------+
+bool HasMarginFor(ENUM_ORDER_TYPE orderType, double lot, double price)
+  {
+   static datetime lastWarn = 0;
+   double margin = 0.0;
+   if(!OrderCalcMargin(orderType, _Symbol, lot, price, margin))
+      return true;   // khong tinh duoc -> de san tu quyet
+   if(margin <= AccountInfoDouble(ACCOUNT_MARGIN_FREE))
+      return true;
+   if(TimeCurrent() - lastWarn >= 60)
+     {
+      lastWarn = TimeCurrent();
+      Print("[DCA] Khong du ky quy de vao ", DoubleToString(lot, 2), " lot (can ",
+            DoubleToString(margin, 2), ", con ", DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE), 2),
+            ") -> tam ngung DCA.");
+     }
+   return false;
+  }
 
 //+------------------------------------------------------------------+
 //| Lot goc cua day DCA: InpInitialLot, nhung khong nho hon lot toi    |
