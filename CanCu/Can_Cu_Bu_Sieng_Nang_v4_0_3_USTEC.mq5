@@ -1,5 +1,8 @@
 //+------------------------------------------------------------------+
-//|                                  Can_Cu_Bu_Sieng_Nang_v4_0_3.mq5 |
+//|                            Can_Cu_Bu_Sieng_Nang_v4_0_3_USTEC.mq5 |
+//|  BAN CHO USTEC: giong het ban vang, chi doi mac dinh:             |
+//|   lot goc 0.05 (lot toi thieu USTEC), magic rieng 20260925,       |
+//|   khoang cach nhap kieu vang va tu quy doi theo XAUUSDc.          |
 //|  EA vao lenh bang cap Buy Stop / Sell Stop, DCA theo he so lot   |
 //|  tuy chinh, chot basket theo so PIP tinh tu gia trung binh, sau  |
 //|  do dat lai cap Stop moi de tiep tuc chu ky.                     |
@@ -46,7 +49,7 @@ enum ETPMode
 //--- Input parameters -------------------------------------------------
 input group "== Vao lenh ban dau (Buy Stop / Sell Stop) =="
 input double InpInitialDistance   = 0.8;     // Khoang cach dat Buy Stop / Sell Stop so voi gia hien tai (don vi gia)
-input double InpInitialLot        = 0.01;    // Khoi luong lenh dau tien
+input double InpInitialLot        = 0.05;    // Khoi luong lenh dau tien (USTEC toi thieu 0.05)
 
 input group "== DCA (nap them lenh cung chieu) =="
 input double   InpDCADistance     = 25.0;    // Khoang cach giua cac lenh DCA cung chieu (don vi gia)
@@ -86,7 +89,7 @@ input double  InpTPMoney          = 100.0;   // Kieu TIEN: chot khi loi ca baske
 input double  InpTPPerLot         = 3.5;     // Kieu TIEN/LOT: chot khi loi >= so nay x (tong lot / 0.01), vd 0.05 lot -> 17.5
 
 input group "== Khac =="
-input ulong  InpMagicNumber       = 20260924; // Magic number
+input ulong  InpMagicNumber       = 20260925; // Magic number (rieng cho USTEC)
 input int    InpSlippagePoints    = 20;       // Truot gia cho phep (points)
 input int    InpRefreshSeconds    = 15;       // Chu ky lam moi gia tham chieu Buy/Sell Stop (giay), chi ap dung khi dang cho vao lenh
 
