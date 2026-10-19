@@ -19,7 +19,7 @@ npm install
 | `npm run build:chalpha` | Render video dọc CH-Alpha Plus ra `out/chalpha.mp4` |
 | `npm run build:chalpha-stats` | Render video dọc CH-Alpha Plus bản số liệu ra `out/chalpha-stats.mp4` |
 | `npm run build:chalpha-kv` | Render motion từ hình key visual CH-Alpha Plus ra `out/chalpha-kv.mp4` |
-| `npm run build:chalpha-voice` | Render motion theo lời đọc của Tùng (~17,7 giây) ra `out/chalpha-voice.mp4` |
+| `npm run build:chalpha-voice` | Render motion theo lời đọc của Tùng (~18,4 giây) ra `out/chalpha-voice.mp4` |
 | `npm run build:chalpha-story` | Render video ghép liền mạch (khớp gối + key visual, ~19 giây) ra `out/chalpha-story.mp4` |
 | `npm run lint` | Kiểm tra TypeScript |
 | `npm run upgrade` | Nâng cấp Remotion |

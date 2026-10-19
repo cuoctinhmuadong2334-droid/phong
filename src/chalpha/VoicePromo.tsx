@@ -236,7 +236,7 @@ const SCENES: TimelineScene[] = [
   { duration: 85, tone: "onDark", Component: ShieldScene },
   { duration: 178, tone: "onLight", Component: KvIntro },
   { duration: 136, tone: "onDark", Component: CollagenScene },
-  { duration: 105, tone: "onDark", Component: PickleballScene },
+  { duration: 125, tone: "onDark", Component: PickleballScene },
   { duration: 90, tone: "onLight", Component: KvOutro },
 ];
 

@@ -3,14 +3,12 @@ import {
   Easing,
   interpolate,
   random,
-  spring,
   useCurrentFrame,
-  useVideoConfig,
 } from "remotion";
 import { Background } from "./Background";
 import { COLORS } from "./content";
 import { Sparkle } from "./Fx";
-import { Joint } from "./Joint";
+import { NoWearMoment } from "./NoWear";
 import { clamp } from "./Scenes";
 
 // "...thoải mái di chuyển, vung vợt" — a paddle swings through and smashes a pickleball.
@@ -220,7 +218,6 @@ const SPEED_LINES = new Array(14).fill(true).map((_, i) => ({
 
 export const PickleballScene: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
   const angle = angleAt(frame);
   const ball = ballAt(frame);
   const swoosh = interpolate(frame, [32, 42, 54, 62], [0, 0.9, 0.9, 0], clamp);
@@ -232,9 +229,7 @@ export const PickleballScene: React.FC = () => {
   });
   const a0 = arcPt(fromA);
   const a1 = arcPt(toA);
-  const badge = spring({ frame: frame - 64, fps, config: { damping: 11 } });
-  const check = spring({ frame: frame - 74, fps, config: { damping: 9 } });
-  const camera = interpolate(frame, [0, 105], [1, 1.06], clamp);
+  const camera = interpolate(frame, [0, 125], [1, 1.06], clamp);
 
   return (
     <AbsoluteFill>
@@ -333,55 +328,8 @@ export const PickleballScene: React.FC = () => {
           );
         })()}
         <Sparkle x={CONTACT.x} y={CONTACT.y} size={240} at={HIT} />
-        {/* "...mà không lo mài mòn sụn": healthy joint badge */}
-        <div
-          style={{
-            position: "absolute",
-            left: 540 - 160,
-            top: 170,
-            width: 320,
-            height: 320,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.14)",
-            border: "2px solid rgba(255,255,255,0.4)",
-            boxShadow: `0 0 60px rgba(143,211,255,${0.6 * badge})`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: interpolate(badge, [0, 0.4], [0, 1], clamp),
-            transform: `scale(${badge})`,
-          }}
-        >
-          <Joint width={190} health={1} inflammation={0} flow={0} />
-          <div
-            style={{
-              position: "absolute",
-              right: 6,
-              bottom: 14,
-              width: 96,
-              height: 96,
-              borderRadius: "50%",
-              background: COLORS.blue,
-              border: "5px solid white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transform: `scale(${check})`,
-            }}
-          >
-            <svg width="54" height="54" viewBox="0 0 24 24">
-              <path
-                d="M4 12.5 L9.5 18 L20 6"
-                fill="none"
-                stroke="white"
-                strokeWidth="3.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
       </AbsoluteFill>
+      <NoWearMoment start={62} />
     </AbsoluteFill>
   );
 };
