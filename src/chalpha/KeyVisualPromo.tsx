@@ -133,8 +133,10 @@ export const KeyVisualStage: React.FC<{
   sweeps: number[];
   duration: number;
   fx?: boolean;
+  // Frame at which the Made in Germany badge gives a quick bounce for emphasis.
+  badgePulseAt?: number;
   children?: React.ReactNode;
-}> = ({ camera, animateTitles, sweeps, duration, fx = false, children }) => {
+}> = ({ camera, animateTitles, sweeps, duration, fx = false, badgePulseAt, children }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -164,6 +166,10 @@ export const KeyVisualStage: React.FC<{
           easing: Easing.out(Easing.cubic),
         })
       : 1;
+  const badgeBump =
+    badgePulseAt === undefined
+      ? 1
+      : 1 + 0.3 * interpolate(frame - badgePulseAt, [0, 6, 18], [0, 1, 0], clamp);
   const line = (p: number): React.CSSProperties => ({
     clipPath: `inset(-20% ${(1 - p) * 100}% -20% 0)`,
     transform: `translateY(${(1 - p) * 18}px)`,
@@ -197,7 +203,7 @@ export const KeyVisualStage: React.FC<{
             name="badge"
             style={{
               opacity: interpolate(badge, [0, 0.5], [0, 1], clamp),
-              transform: `scale(${0.4 + 0.6 * badge}) rotate(${(1 - badge) * -20 + Math.sin(frame / 22) * 1.2 * badge}deg)`,
+              transform: `scale(${(0.4 + 0.6 * badge) * badgeBump}) rotate(${(1 - badge) * -20 + Math.sin(frame / 22) * 1.2 * badge}deg)`,
             }}
           />
           <Layer name="line1" style={line(reveal(70))} />

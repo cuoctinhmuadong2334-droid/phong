@@ -10,6 +10,8 @@ export const CONTENT = {
     "Giảm viêm, dịu khớp nhanh chóng",
   ],
   pack: "Hộp 30 ống uống · Liệu trình 1 tháng",
+  fortigel: "FORTIGEL®",
+  collagenType: "COLLAGEN TYPE II",
   stats: [
     { value: 42, direction: "down", label: "Mức độ đau khớp khi vận động" },
     { value: 45, direction: "up", label: "Tổng hợp collagen và proteoglycan tại khớp" },

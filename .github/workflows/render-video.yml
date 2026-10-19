@@ -22,6 +22,7 @@ jobs:
       - run: npm run build:chalpha-stats
       - run: npm run build:chalpha-kv
       - run: npm run build:chalpha-story
+      - run: npm run build:chalpha-voice
       - uses: actions/upload-artifact@v4
         with:
           name: videos
