@@ -13,7 +13,8 @@
     "build:chalpha-story": "remotion render ChAlphaStory out/chalpha-story.mp4",
     "build:chalpha-voice": "remotion render ChAlphaVoice out/chalpha-voice.mp4",
     "upgrade": "remotion upgrade",
-    "lint": "tsc"
+    "lint": "tsc",
+    "build:denoise": "remotion render DenoiseLogo16x9 out/denoise-16x9.mp4 && remotion render DenoiseLogo9x16 out/denoise-9x16.mp4"
   },
   "dependencies": {
     "@remotion/cli": "4.0.529",

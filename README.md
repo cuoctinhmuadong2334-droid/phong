@@ -19,6 +19,7 @@ npm install
 | `npm run build:chalpha` | Render video dọc CH-Alpha Plus ra `out/chalpha.mp4` |
 | `npm run build:chalpha-stats` | Render video dọc CH-Alpha Plus bản số liệu ra `out/chalpha-stats.mp4` |
 | `npm run build:chalpha-kv` | Render motion từ hình key visual CH-Alpha Plus ra `out/chalpha-kv.mp4` |
+| `npm run build:denoise` | Render motion logo Denoise 15 giây, 2 bản ngang 16:9 và dọc 9:16 ra `out/denoise-16x9.mp4`, `out/denoise-9x16.mp4` |
 | `npm run build:chalpha-voice` | Render motion theo lời đọc của Tùng (~18,4 giây) ra `out/chalpha-voice.mp4` |
 | `npm run build:chalpha-story` | Render video ghép liền mạch (khớp gối + key visual, ~19 giây) ra `out/chalpha-story.mp4` |
 | `npm run lint` | Kiểm tra TypeScript |
@@ -45,6 +46,9 @@ npm install
   - `Fx.tsx` – hiệu ứng dùng cho video ghép: sóng đau, rung khung hình, bùng sáng hồi phục, tia lấp lánh, light leak
   - `KeyVisualPromo.tsx` – motion từ nguyên tấm key visual (sản phẩm giữ nguyên trong ảnh, không tách nền); chỉ logo, cờ Đức và tiêu đề được tách lớp để chuyển động (`public/chalpha/kv/`)
 - `public/chalpha/product.png` – ảnh sản phẩm đã tách nền
+- `src/denoise/` – motion logo Denoise (khử nhiễu hạt): nhiễu tivi được quét sạch → hạt nhiễu bay về chữ → đường chia trước/sau → logo sạch
+  - `DenoiseLogo.tsx` – cảnh chính, tự căn theo khung ngang/dọc; `NoiseCanvas.tsx`, `Particles.tsx`, `BeforeAfter.tsx`
+- `public/denoise/` – logo đã tách (đầy đủ, lõi chữ, hạt mép) và điểm lấy mẫu cho đám hạt
 - `public/fonts/` – font đóng gói sẵn (SIL OFL) để render không cần mạng
 - `remotion.config.ts` – cấu hình render
 
