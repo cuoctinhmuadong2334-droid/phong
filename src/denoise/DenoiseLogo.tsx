@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
 import {
   AbsoluteFill,
-  continueRender,
-  delayRender,
   Easing,
   Img,
   interpolate,
+  random,
+  spring,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
@@ -13,49 +12,56 @@ import {
 import { Sparkle } from "../chalpha/Fx";
 import { clamp } from "../chalpha/Scenes";
 import { Divider } from "./BeforeAfter";
-import { PixelCanvas, screenStatic, specks } from "./NoiseCanvas";
-import { Particles, type Box } from "./Particles";
+import { LensPhoto, lensFor } from "./LensPhoto";
+import { grain, PixelCanvas, specks } from "./NoiseCanvas";
 
-// "Denoise" logo reveal: TV static is swept clean, stray grains fly into the letters,
-// a before/after divider wipes the remaining speckle off, and the clean logo holds.
-// Works for any frame size; the logo is centred and sized to the shorter side.
+// "Denoise" logo film for a media company:
+// a grainy studio photo of a camera lens is cleaned with a before/after wipe, the
+// camera pushes into the lens, the lens match-cuts into the "o" of the logo, the other
+// letters jump in (each one blurred and noisy), and a denoise beam cleans them.
 
 export const DENOISE_DURATION = 450;
 
 const RATIO = 0.22551; // logo height / width
 const LOGO = staticFile("denoise/logo.png");
 
+type Box = { x: number; y: number; w: number; h: number };
+
+// Letter boxes relative to the logo box (from the logo artwork).
+const LETTERS = [
+  { name: "D", x: 0.0313, y: 0.1338, w: 0.1708, h: 0.7424, at: 222, from: [-3.2, 0], rot: -20 },
+  { name: "e1", x: 0.2158, y: 0.3914, w: 0.1253, h: 0.4646, at: 192, from: [0, -2.8], rot: 25 },
+  { name: "n", x: 0.3605, y: 0.4015, w: 0.1321, h: 0.4596, at: 182, from: [0, 2.8], rot: -25 },
+  { name: "o", x: 0.5108, y: 0.3914, w: 0.1287, h: 0.4798, at: 0, from: [0, 0], rot: 0 },
+  { name: "i", x: 0.6589, y: 0.1843, w: 0.0421, h: 0.6768, at: 202, from: [0, -3], rot: 30 },
+  { name: "s", x: 0.7181, y: 0.4015, w: 0.1162, h: 0.4596, at: 212, from: [0, 2.8], rot: -30 },
+  { name: "e2", x: 0.8457, y: 0.3813, w: 0.1287, h: 0.4949, at: 232, from: [3.2, 0], rot: 20 },
+] as const;
+
 // Timeline (frames)
-const SWEEP = [60, 150] as const;
-const GATHER = { start: 150, duration: 95 };
-const WIPE = [250, 325] as const;
-const FINAL = 325;
+const PHOTO_WIPE = [40, 105] as const;
+const PUSH = [118, 158] as const;
+const MATCH = 158;
+const O_SETTLE = [158, 194] as const;
+const DENOISE = [262, 330] as const;
+const FINAL = 330;
+const PUSH_SCALE = 1.35;
 
-const usePoints = () => {
-  const [handle] = useState(() => delayRender("denoise points"));
-  const [points, setPoints] = useState<[number, number][] | null>(null);
-  useEffect(() => {
-    fetch(staticFile("denoise/points.json"))
-      .then((r) => r.json())
-      .then((j: { points: [number, number][] }) => {
-        setPoints(j.points);
-        continueRender(handle);
-      });
-  }, [handle]);
-  return points;
-};
+const maskStyle = (src: string): React.CSSProperties => ({
+  WebkitMaskImage: `url(${src})`,
+  WebkitMaskSize: "100% 100%",
+  maskImage: `url(${src})`,
+  maskSize: "100% 100%",
+});
 
-const inset = (box: Box, left: number, right: number) =>
-  `inset(-60% ${Math.max(0, right)}px -60% ${Math.max(0, left)}px)`;
-
-/** The logo with live speckle noise inside the letters. */
-const NoisyLogo: React.FC<{ box: Box; density: number; style?: React.CSSProperties }> = ({
-  box,
-  density,
-  style,
-}) => {
-  const frame = useCurrentFrame();
-  const jx = Math.sin(frame * 2.3) * 1.5;
+/** One letter: optional blur and live speckle noise masked to the glyph. */
+const Letter: React.FC<{
+  name: string;
+  box: Box;
+  noise: number; // 0 clean .. 1 fully noisy
+  style?: React.CSSProperties;
+}> = ({ name, box, noise, style }) => {
+  const src = staticFile(`denoise/letter-${name}.png`);
   return (
     <div
       style={{
@@ -64,175 +70,282 @@ const NoisyLogo: React.FC<{ box: Box; density: number; style?: React.CSSProperti
         top: box.y,
         width: box.w,
         height: box.h,
-        WebkitMaskImage: `url(${LOGO})`,
-        WebkitMaskSize: "100% 100%",
-        maskImage: `url(${LOGO})`,
-        maskSize: "100% 100%",
-        background: "white",
-        transform: `translateX(${jx}px)`,
+        filter: noise > 0.01 ? `blur(${5 * noise}px)` : undefined,
         ...style,
       }}
     >
-      <PixelCanvas
-        w={Math.round(box.w / 3)}
-        h={Math.round(box.h / 3)}
-        seed={3}
-        paint={specks(density)}
-        style={{ width: box.w, height: box.h }}
-      />
+      <Img src={src} style={{ position: "absolute", width: box.w, height: box.h }} />
+      {noise > 0.01 && (
+        <div style={{ position: "absolute", inset: 0, ...maskStyle(src) }}>
+          <PixelCanvas
+            w={Math.max(4, Math.round(box.w / 3))}
+            h={Math.max(4, Math.round(box.h / 3))}
+            seed={name.length * 13 + name.charCodeAt(0)}
+            paint={specks(0.55 * noise)}
+            style={{ width: box.w, height: box.h }}
+          />
+        </div>
+      )}
     </div>
   );
 };
 
-const LogoImg: React.FC<{ box: Box; src: string; style?: React.CSSProperties }> = ({
-  box,
-  src,
-  style,
-}) => (
-  <Img
-    src={staticFile(src)}
-    style={{
-      position: "absolute",
-      left: box.x,
-      top: box.y,
-      width: box.w,
-      height: box.h,
-      ...style,
-    }}
-  />
-);
+const BURST = new Array(30).fill(true).map((_, i) => ({
+  u: random(`b-u-${i}`),
+  v: random(`b-v-${i}`),
+  angle: -Math.PI / 2 + (random(`b-a-${i}`) - 0.5) * 2.6,
+  dist: 60 + random(`b-d-${i}`) * 140,
+  size: 3 + random(`b-s-${i}`) * 4,
+}));
+
+/** Noise grains thrown off a letter as it is cleaned. */
+const Burst: React.FC<{ box: Box; at: number }> = ({ box, at }) => {
+  const frame = useCurrentFrame();
+  const t = (frame - at) / 22;
+  if (t < 0 || t > 1) return null;
+  const e = Easing.out(Easing.cubic)(t);
+  return (
+    <>
+      {BURST.map((p, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            left: box.x + p.u * box.w + Math.cos(p.angle) * p.dist * e,
+            top: box.y + p.v * box.h + Math.sin(p.angle) * p.dist * e,
+            width: p.size,
+            height: p.size,
+            background: "white",
+            opacity: 1 - t,
+            boxShadow: "0 0 6px rgba(160,200,255,0.9)",
+          }}
+        />
+      ))}
+    </>
+  );
+};
 
 export const DenoiseLogo: React.FC = () => {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
-  const points = usePoints();
+  const { width, height, fps } = useVideoConfig();
 
   const logoW = width >= height ? 1100 : 900;
-  const box: Box = { x: (width - logoW) / 2, y: (height - logoW * RATIO) / 2, w: logoW, h: logoW * RATIO };
+  const box: Box = {
+    x: (width - logoW) / 2,
+    y: (height - logoW * RATIO) / 2,
+    w: logoW,
+    h: logoW * RATIO,
+  };
+  const letterBox = (l: (typeof LETTERS)[number]): Box => ({
+    x: box.x + l.x * box.w,
+    y: box.y + l.y * box.h,
+    w: l.w * box.w,
+    h: l.h * box.h,
+  });
+  const lens = lensFor(width, height);
 
-  // 1) static, swept clean left -> right
-  const sweep = interpolate(frame, SWEEP, [-0.08, 1.1], { ...clamp, easing: Easing.inOut(Easing.quad) });
-  const sweepPx = sweep * width;
-  const residual = interpolate(frame, [SWEEP[1], WIPE[0]], [0.06, 0], clamp);
-  const power = interpolate(frame, [0, 3, 5, 8], [0, 1, 0.4, 1], clamp);
-  const fade = 0.12;
-  const amountAt = (x: number) =>
-    power *
-    (x < sweep - fade ? residual : x < sweep ? residual + ((1 - residual) * (x - (sweep - fade))) / fade : 1);
-  const band = ((frame * 0.013) % 1.3) - 0.15;
+  // --- Photo: noisy -> before/after wipe -> push into the lens ---------------------
+  const photoIn = interpolate(frame, [0, 12], [0, 1], clamp);
+  const wipe = interpolate(frame, PHOTO_WIPE, [-0.02, 1.02], { ...clamp, easing: Easing.inOut(Easing.cubic) });
+  const wipePx = wipe * width;
+  const drift = interpolate(frame, [0, PUSH[0]], [1, 1.03], clamp);
+  const push = interpolate(frame, PUSH, [1, PUSH_SCALE / 1.03], { ...clamp, easing: Easing.in(Easing.quad) });
+  const photoScale = drift * push;
+  const pushBlur = interpolate(frame, [PUSH[1] - 16, PUSH[1]], [0, 5], clamp);
+  const ringGlow = interpolate(frame, [PUSH[1] - 14, MATCH], [0, 1], clamp);
+  const photoOut = interpolate(frame, [MATCH - 2, MATCH + 6], [1, 0], clamp);
+  const flash = interpolate(frame, [MATCH - 3, MATCH, MATCH + 7], [0, 0.5, 0], clamp);
+  const showPhoto = frame < MATCH + 6;
 
-  // 2) speckle inside the letters eases off while grains gather
-  const density = interpolate(frame, [GATHER.start, GATHER.start + GATHER.duration], [0.55, 0.38], clamp);
+  // --- Letters ----------------------------------------------------------------------
+  const o = LETTERS[3];
+  const oBox = letterBox(o);
+  const oStartScale = (2 * lens.r * PUSH_SCALE) / oBox.w;
+  const settle = interpolate(frame, O_SETTLE, [0, 1], { ...clamp, easing: Easing.out(Easing.exp) });
+  const oScale = oStartScale + (1 - oStartScale) * settle;
+  const oDx = (lens.cx - (oBox.x + oBox.w / 2)) * (1 - settle);
+  const oDy = (lens.cy - (oBox.y + oBox.h / 2)) * (1 - settle);
 
-  // 3) before/after divider sweeps right -> left, cleaning the logo
-  const wipe = interpolate(frame, WIPE, [1.04, -0.04], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-  const dividerPx = box.x + box.w * wipe;
-  const dividerOpacity = interpolate(frame, [WIPE[0] - 6, WIPE[0] + 2, WIPE[1] - 2, WIPE[1] + 6], [0, 1, 1, 0], clamp);
+  const beam = interpolate(frame, DENOISE, [box.x - 80, box.x + box.w + 80], {
+    ...clamp,
+    easing: Easing.inOut(Easing.quad),
+  });
+  const cleanOf = (b: Box) => interpolate(beam, [b.x, b.x + b.w], [0, 1], clamp);
+  // first frame the beam passes a letter's centre (when its noise is thrown off)
+  const burstAt = (b: Box) => {
+    for (let f = DENOISE[0]; f <= DENOISE[1]; f++) {
+      const x = interpolate(f, DENOISE, [box.x - 80, box.x + box.w + 80], {
+        ...clamp,
+        easing: Easing.inOut(Easing.quad),
+      });
+      if (x >= b.x + b.w / 2) return f;
+    }
+    return DENOISE[1];
+  };
 
-  // 4) final hold
-  const final = frame >= FINAL;
-  const push = interpolate(frame, [FINAL, FINAL + 65], [1, 1.04], { ...clamp, easing: Easing.out(Easing.cubic) });
-  const shine = interpolate(frame, [345, 390], [-20, 120], { ...clamp, easing: Easing.inOut(Easing.quad) });
-  const grainDrift = Math.sin(frame / 18) * 2;
-  const grainGlow = 0.85 + 0.15 * Math.sin(frame / 7);
-
-  const inSweep = frame < SWEEP[1] + 4;
-  const beforeWipe = frame < WIPE[0];
+  const finalPush = interpolate(frame, [FINAL, FINAL + 70], [1, 1.035], {
+    ...clamp,
+    easing: Easing.out(Easing.cubic),
+  });
+  const grainIn = interpolate(frame, [FINAL, FINAL + 30], [0, 1], clamp);
+  const shine = interpolate(frame, [350, 395], [-20, 120], { ...clamp, easing: Easing.inOut(Easing.quad) });
 
   return (
     <AbsoluteFill style={{ backgroundColor: "black", overflow: "hidden" }}>
-      {frame < WIPE[1] && (
-        <PixelCanvas
-          w={Math.round(width / 2)}
-          h={Math.round(height / 2)}
-          seed={1}
-          paint={screenStatic(amountAt, band)}
-          style={{ width, height }}
+      {/* soft glow behind the logo once we are in the type world */}
+      <AbsoluteFill
+        style={{
+          background: "radial-gradient(ellipse at 50% 50%, rgba(40,70,160,0.35), rgba(0,0,0,0) 60%)",
+          opacity: interpolate(frame, [MATCH, MATCH + 20], [0, 1], clamp),
+        }}
+      />
+
+      {showPhoto && (
+        <AbsoluteFill
+          style={{
+            opacity: photoIn * photoOut,
+            transformOrigin: `${lens.cx}px ${lens.cy}px`,
+            transform: `scale(${photoScale})`,
+            filter: pushBlur > 0.05 ? `blur(${pushBlur}px)` : undefined,
+          }}
+        >
+          <LensPhoto width={width} height={height} lens={lens} />
+          {/* noisy version of the photo, to the right of the before/after divider */}
+          <AbsoluteFill style={{ clipPath: `inset(0 0 0 ${Math.max(0, wipePx)}px)` }}>
+            <AbsoluteFill style={{ filter: "blur(2.2px) saturate(0.8) brightness(0.92)" }}>
+              <LensPhoto width={width} height={height} lens={lens} />
+            </AbsoluteFill>
+            <PixelCanvas
+              w={Math.round(width / 2)}
+              h={Math.round(height / 2)}
+              seed={5}
+              paint={grain(0.55)}
+              style={{ width, height }}
+            />
+          </AbsoluteFill>
+          <Sparkle x={lens.cx - lens.r * 0.12} y={lens.cy - lens.r * 0.4} size={120} at={108} />
+          <div
+            style={{
+              position: "absolute",
+              left: lens.cx - lens.r,
+              top: lens.cy - lens.r,
+              width: lens.r * 2,
+              height: lens.r * 2,
+              borderRadius: "50%",
+              border: `${10 * ringGlow}px solid rgba(255,255,255,${ringGlow})`,
+              boxShadow: `0 0 ${60 * ringGlow}px rgba(170,210,255,${ringGlow})`,
+            }}
+          />
+        </AbsoluteFill>
+      )}
+      {frame >= PHOTO_WIPE[0] - 6 && frame <= PHOTO_WIPE[1] + 6 && (
+        <Divider
+          x={wipePx}
+          top={0}
+          height={height}
+          opacity={interpolate(
+            frame,
+            [PHOTO_WIPE[0] - 6, PHOTO_WIPE[0], PHOTO_WIPE[1], PHOTO_WIPE[1] + 6],
+            [0, 1, 1, 0],
+            clamp,
+          )}
         />
       )}
 
-      <AbsoluteFill style={{ transformOrigin: "50% 50%", transform: `scale(${push})` }}>
-        {/* logo hidden in the static, still uncleaned (right of the sweep) */}
-        {inSweep && (
-          <NoisyLogo
-            box={box}
-            density={0.55}
-            style={{
-              opacity: 0.22 * power,
-              mixBlendMode: "screen",
-              clipPath: inset(box, sweepPx - box.x, 0),
-            }}
-          />
-        )}
+      {frame >= MATCH - 2 && (
+        <AbsoluteFill style={{ transformOrigin: "50% 50%", transform: `scale(${finalPush})` }}>
+          {LETTERS.map((l) => {
+            const b = letterBox(l);
+            const clean = cleanOf(b);
+            const noise = 1 - clean;
+            const pop = 1 + 0.12 * Math.sin(Math.PI * clean);
+            if (l.name === "o") {
+              return (
+                <Letter
+                  key={l.name}
+                  name={l.name}
+                  box={b}
+                  noise={noise}
+                  style={{
+                    opacity: interpolate(frame, [MATCH - 2, MATCH + 4], [0, 1], clamp),
+                    transform: `translate(${oDx}px, ${oDy}px) scale(${oScale * pop})`,
+                  }}
+                />
+              );
+            }
+            const t = spring({ frame: frame - l.at, fps, config: { damping: 10, mass: 0.7 } });
+            if (frame < l.at) return null;
+            return (
+              <Letter
+                key={l.name}
+                name={l.name}
+                box={b}
+                noise={noise}
+                style={{
+                  opacity: interpolate(t, [0, 0.3], [0, 1], clamp),
+                  transform: `translate(${(1 - t) * l.from[0] * box.h}px, ${(1 - t) * l.from[1] * box.h}px) rotate(${(1 - t) * l.rot}deg) scale(${(0.4 + 0.6 * t) * pop})`,
+                }}
+              />
+            );
+          })}
+          {LETTERS.map((l) => (
+            <Burst key={l.name} box={letterBox(l)} at={burstAt(letterBox(l))} />
+          ))}
 
-        {/* noisy logo: revealed by the sweep, then wiped by the divider */}
-        {!final && frame >= SWEEP[0] && (
-          <NoisyLogo
-            box={box}
-            density={density}
-            style={{
-              clipPath: beforeWipe
-                ? inset(box, 0, box.x + box.w - sweepPx)
-                : inset(box, 0, box.x + box.w - dividerPx),
-            }}
-          />
-        )}
+          {frame >= FINAL && (
+            <>
+              <Img
+                src={staticFile("denoise/logo-grain.png")}
+                style={{
+                  position: "absolute",
+                  left: box.x,
+                  top: box.y,
+                  width: box.w,
+                  height: box.h,
+                  opacity: grainIn * (0.85 + 0.15 * Math.sin(frame / 7)),
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: box.x,
+                  top: box.y,
+                  width: box.w,
+                  height: box.h,
+                  ...maskStyle(LOGO),
+                  background: `linear-gradient(105deg, rgba(120,170,255,0) ${shine - 10}%, rgba(150,200,255,0.9) ${shine}%, rgba(120,170,255,0) ${shine + 10}%)`,
+                }}
+              />
+              <Sparkle x={box.x + box.w * 0.03} y={box.y + box.h * 0.25} size={70} at={365} />
+              <Sparkle x={box.x + box.w * 0.985} y={box.y + box.h * 0.72} size={60} at={382} />
+              <Sparkle x={box.x + box.w * 0.68} y={box.y + box.h * 0.1} size={50} at={398} />
+            </>
+          )}
+        </AbsoluteFill>
+      )}
 
-        {/* clean logo to the right of the divider */}
-        {!final && !beforeWipe && (
-          <LogoImg box={box} src="denoise/logo.png" style={{ clipPath: inset(box, dividerPx - box.x, 0) }} />
-        )}
-
-        {final && (
-          <>
-            <LogoImg
-              box={box}
-              src="denoise/logo-core.png"
-              style={{ filter: "drop-shadow(0 0 18px rgba(255,255,255,0.25))" }}
-            />
-            <LogoImg
-              box={box}
-              src="denoise/logo-grain.png"
-              style={{ opacity: grainGlow, transform: `translateX(${grainDrift}px)` }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                left: box.x,
-                top: box.y,
-                width: box.w,
-                height: box.h,
-                WebkitMaskImage: `url(${LOGO})`,
-                WebkitMaskSize: "100% 100%",
-                maskImage: `url(${LOGO})`,
-                maskSize: "100% 100%",
-                background: `linear-gradient(105deg, rgba(120,170,255,0) ${shine - 10}%, rgba(150,200,255,0.9) ${shine}%, rgba(120,170,255,0) ${shine + 10}%)`,
-              }}
-            />
-            <Sparkle x={box.x + box.w * 0.03} y={box.y + box.h * 0.25} size={70} at={360} />
-            <Sparkle x={box.x + box.w * 0.985} y={box.y + box.h * 0.72} size={60} at={378} />
-            <Sparkle x={box.x + box.w * 0.62} y={box.y + box.h * 0.08} size={50} at={396} />
-          </>
-        )}
-      </AbsoluteFill>
-
-      {points && <Particles points={points} box={box} start={GATHER.start} duration={GATHER.duration} />}
-
-      {inSweep && frame >= SWEEP[0] && (
+      {frame >= DENOISE[0] - 4 && frame <= DENOISE[1] + 4 && (
         <div
           style={{
             position: "absolute",
-            left: sweepPx - 3,
-            top: 0,
+            left: beam - 3,
+            top: box.y - box.h * 1.2,
             width: 6,
-            height,
-            background: "white",
+            height: box.h * 3.4,
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0), white 25%, white 75%, rgba(255,255,255,0))",
             boxShadow: "0 0 30px 8px rgba(170,210,255,0.8), 0 0 90px 20px rgba(120,170,255,0.45)",
+            opacity: interpolate(
+              frame,
+              [DENOISE[0] - 4, DENOISE[0] + 2, DENOISE[1] - 2, DENOISE[1] + 4],
+              [0, 1, 1, 0],
+              clamp,
+            ),
           }}
         />
       )}
 
-      {!final && !beforeWipe && <Divider x={dividerPx} box={box} opacity={dividerOpacity} />}
+      <AbsoluteFill style={{ background: "white", opacity: flash, mixBlendMode: "screen" }} />
     </AbsoluteFill>
   );
 };

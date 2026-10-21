@@ -46,9 +46,9 @@ npm install
   - `Fx.tsx` – hiệu ứng dùng cho video ghép: sóng đau, rung khung hình, bùng sáng hồi phục, tia lấp lánh, light leak
   - `KeyVisualPromo.tsx` – motion từ nguyên tấm key visual (sản phẩm giữ nguyên trong ảnh, không tách nền); chỉ logo, cờ Đức và tiêu đề được tách lớp để chuyển động (`public/chalpha/kv/`)
 - `public/chalpha/product.png` – ảnh sản phẩm đã tách nền
-- `src/denoise/` – motion logo Denoise (khử nhiễu hạt): nhiễu tivi được quét sạch → hạt nhiễu bay về chữ → đường chia trước/sau → logo sạch
-  - `DenoiseLogo.tsx` – cảnh chính, tự căn theo khung ngang/dọc; `NoiseCanvas.tsx`, `Particles.tsx`, `BeforeAfter.tsx`
-- `public/denoise/` – logo đã tách (đầy đủ, lõi chữ, hạt mép) và điểm lấy mẫu cho đám hạt
+- `src/denoise/` – motion logo Denoise (khử nhiễu hạt): ảnh ống kính nhiễu hạt → đường chia trước/sau khử nhiễu ảnh → máy quay lao vào ống kính, ống kính match cut thành chữ "o" → các chữ nhảy vào (mờ, nhiễu) → tia quét khử nhiễu từng chữ → logo sạch
+  - `DenoiseLogo.tsx` – cảnh chính, tự căn theo khung ngang/dọc; `LensPhoto.tsx` – "ảnh" ống kính dựng bằng SVG; `NoiseCanvas.tsx`, `BeforeAfter.tsx`
+- `public/denoise/` – logo đã tách: đầy đủ, lõi chữ, hạt mép và từng chữ riêng (`letter-*.png`)
 - `public/fonts/` – font đóng gói sẵn (SIL OFL) để render không cần mạng
 - `remotion.config.ts` – cấu hình render
 

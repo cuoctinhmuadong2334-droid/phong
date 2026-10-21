@@ -38,31 +38,14 @@ export const PixelCanvas: React.FC<{
   );
 };
 
-/**
- * TV static. `amountAt(x)` (x in 0..1 across the screen) scales the noise so a sweep
- * can clean the picture column by column.
- */
-export const screenStatic =
-  (amountAt: (x: number) => number, band: number): Painter =>
+/** Luminance grain (random light and dark specks) for the "noisy photo". */
+export const grain =
+  (intensity: number): Painter =>
   (d, w, h, rand) => {
-    const cols = new Float32Array(w);
-    for (let x = 0; x < w; x++) cols[x] = amountAt(x / w);
-    for (let y = 0; y < h; y++) {
-      // a bright rolling band, like a detuned signal
-      const by = Math.abs(y / h - band);
-      const boost = by < 0.06 ? 1 + 0.5 * (1 - by / 0.06) : 1;
-      for (let x = 0; x < w; x++) {
-        const a = cols[x];
-        const i = (y * w + x) * 4;
-        if (a <= 0.001) {
-          d[i + 3] = 255;
-          continue;
-        }
-        const r = rand();
-        const v = Math.min(255, r * r * 255 * 1.6 * boost) * a;
-        d[i] = d[i + 1] = d[i + 2] = v;
-        d[i + 3] = 255;
-      }
+    for (let i = 0; i < w * h; i++) {
+      const v = rand() < 0.5 ? 0 : 255;
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v;
+      d[i * 4 + 3] = intensity * 255 * rand();
     }
   };
 
