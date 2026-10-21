@@ -4,7 +4,6 @@ import {
   Img,
   interpolate,
   random,
-  spring,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
@@ -18,34 +17,50 @@ import { grain, PixelCanvas, specks } from "./NoiseCanvas";
 // "Denoise" logo film for a media company:
 // a grainy studio photo of a camera lens is cleaned with a before/after wipe, the
 // camera pushes into the lens, the lens match-cuts into the "o" of the logo, the other
-// letters jump in (each one blurred and noisy), and a denoise beam cleans them.
+// letters rise in (each one blurred and noisy), and a denoise beam cleans them.
+// All timings are in seconds so the film plays the same at any frame rate.
 
-export const DENOISE_DURATION = 450;
+export const DENOISE_SECONDS = 15;
+export const DENOISE_FPS = 60;
 
 const RATIO = 0.22551; // logo height / width
 const LOGO = staticFile("denoise/logo.png");
 
+// Smooth, "editorial" curves (similar to After Effects easy-ease presets).
+const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
+const EASE_IN_OUT = Easing.bezier(0.65, 0, 0.35, 1);
+const EASE_IN = Easing.bezier(0.55, 0, 1, 0.45);
+
 type Box = { x: number; y: number; w: number; h: number };
 
-// Letter boxes relative to the logo box (from the logo artwork).
+// Letter boxes relative to the logo box (from the logo artwork); `at` = entrance time (s).
 const LETTERS = [
-  { name: "D", x: 0.0313, y: 0.1338, w: 0.1708, h: 0.7424, at: 222, from: [-3.2, 0], rot: -20 },
-  { name: "e1", x: 0.2158, y: 0.3914, w: 0.1253, h: 0.4646, at: 192, from: [0, -2.8], rot: 25 },
-  { name: "n", x: 0.3605, y: 0.4015, w: 0.1321, h: 0.4596, at: 182, from: [0, 2.8], rot: -25 },
-  { name: "o", x: 0.5108, y: 0.3914, w: 0.1287, h: 0.4798, at: 0, from: [0, 0], rot: 0 },
-  { name: "i", x: 0.6589, y: 0.1843, w: 0.0421, h: 0.6768, at: 202, from: [0, -3], rot: 30 },
-  { name: "s", x: 0.7181, y: 0.4015, w: 0.1162, h: 0.4596, at: 212, from: [0, 2.8], rot: -30 },
-  { name: "e2", x: 0.8457, y: 0.3813, w: 0.1287, h: 0.4949, at: 232, from: [3.2, 0], rot: 20 },
+  { name: "D", x: 0.0313, y: 0.1338, w: 0.1708, h: 0.7424, at: 6.2 },
+  { name: "e1", x: 0.2158, y: 0.3914, w: 0.1253, h: 0.4646, at: 6.35 },
+  { name: "n", x: 0.3605, y: 0.4015, w: 0.1321, h: 0.4596, at: 6.5 },
+  { name: "o", x: 0.5108, y: 0.3914, w: 0.1287, h: 0.4798, at: 0 },
+  { name: "i", x: 0.6589, y: 0.1843, w: 0.0421, h: 0.6768, at: 6.65 },
+  { name: "s", x: 0.7181, y: 0.4015, w: 0.1162, h: 0.4596, at: 6.8 },
+  { name: "e2", x: 0.8457, y: 0.3813, w: 0.1287, h: 0.4949, at: 6.95 },
 ] as const;
 
-// Timeline (frames)
-const PHOTO_WIPE = [40, 105] as const;
-const PUSH = [118, 158] as const;
-const MATCH = 158;
-const O_SETTLE = [158, 194] as const;
-const DENOISE = [262, 330] as const;
-const FINAL = 330;
-const PUSH_SCALE = 1.35;
+// Timeline (seconds)
+const T = {
+  photoIn: [0, 0.6],
+  wipe: [1.2, 3.4],
+  glint: 3.55,
+  push: [3.7, 5.4],
+  match: 5.3,
+  oSettle: [5.35, 6.9],
+  letterIn: 1.0,
+  denoise: [8.3, 10.8],
+  final: 10.8,
+  shine: [11.4, 12.9],
+} as const;
+const PUSH_SCALE = 1.38;
+
+const ease = (t: number, range: readonly [number, number], curve: (x: number) => number) =>
+  interpolate(t, range, [0, 1], { ...clamp, easing: curve });
 
 const maskStyle = (src: string): React.CSSProperties => ({
   WebkitMaskImage: `url(${src})`,
@@ -54,14 +69,17 @@ const maskStyle = (src: string): React.CSSProperties => ({
   maskSize: "100% 100%",
 });
 
-/** One letter: optional blur and live speckle noise masked to the glyph. */
+/** One letter: blur plus speckle noise masked to the glyph, both scaled by `noise`. */
 const Letter: React.FC<{
   name: string;
   box: Box;
   noise: number; // 0 clean .. 1 fully noisy
+  extraBlur?: number;
   style?: React.CSSProperties;
-}> = ({ name, box, noise, style }) => {
+}> = ({ name, box, noise, extraBlur = 0, style }) => {
+  const { fps } = useVideoConfig();
   const src = staticFile(`denoise/letter-${name}.png`);
+  const blur = 4.5 * noise + extraBlur;
   return (
     <div
       style={{
@@ -70,18 +88,19 @@ const Letter: React.FC<{
         top: box.y,
         width: box.w,
         height: box.h,
-        filter: noise > 0.01 ? `blur(${5 * noise}px)` : undefined,
+        filter: blur > 0.05 ? `blur(${blur}px)` : undefined,
         ...style,
       }}
     >
       <Img src={src} style={{ position: "absolute", width: box.w, height: box.h }} />
       {noise > 0.01 && (
-        <div style={{ position: "absolute", inset: 0, ...maskStyle(src) }}>
+        <div style={{ position: "absolute", inset: 0, opacity: noise, ...maskStyle(src) }}>
           <PixelCanvas
             w={Math.max(4, Math.round(box.w / 3))}
             h={Math.max(4, Math.round(box.h / 3))}
             seed={name.length * 13 + name.charCodeAt(0)}
-            paint={specks(0.55 * noise)}
+            paint={specks(0.5)}
+            step={Math.round(fps / 12)}
             style={{ width: box.w, height: box.h }}
           />
         </div>
@@ -90,37 +109,44 @@ const Letter: React.FC<{
   );
 };
 
-const BURST = new Array(30).fill(true).map((_, i) => ({
+const BURST = new Array(36).fill(true).map((_, i) => ({
   u: random(`b-u-${i}`),
   v: random(`b-v-${i}`),
-  angle: -Math.PI / 2 + (random(`b-a-${i}`) - 0.5) * 2.6,
-  dist: 60 + random(`b-d-${i}`) * 140,
-  size: 3 + random(`b-s-${i}`) * 4,
+  angle: -Math.PI / 2 + (random(`b-a-${i}`) - 0.5) * 2.2,
+  dist: 50 + random(`b-d-${i}`) * 120,
+  size: 2 + random(`b-s-${i}`) * 4,
+  life: 0.7 + random(`b-l-${i}`) * 0.5,
 }));
 
-/** Noise grains thrown off a letter as it is cleaned. */
+/** Soft noise grains drifting off a letter as it is cleaned. */
 const Burst: React.FC<{ box: Box; at: number }> = ({ box, at }) => {
   const frame = useCurrentFrame();
-  const t = (frame - at) / 22;
-  if (t < 0 || t > 1) return null;
-  const e = Easing.out(Easing.cubic)(t);
+  const { fps } = useVideoConfig();
+  const t = frame / fps - at;
+  if (t < 0 || t > 1.3) return null;
   return (
     <>
-      {BURST.map((p, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            left: box.x + p.u * box.w + Math.cos(p.angle) * p.dist * e,
-            top: box.y + p.v * box.h + Math.sin(p.angle) * p.dist * e,
-            width: p.size,
-            height: p.size,
-            background: "white",
-            opacity: 1 - t,
-            boxShadow: "0 0 6px rgba(160,200,255,0.9)",
-          }}
-        />
-      ))}
+      {BURST.map((p, i) => {
+        const k = t / p.life;
+        if (k > 1) return null;
+        const e = EASE_OUT(k);
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: box.x + p.u * box.w + Math.cos(p.angle) * p.dist * e,
+              top: box.y + p.v * box.h + Math.sin(p.angle) * p.dist * e - 30 * k * k,
+              width: p.size,
+              height: p.size,
+              borderRadius: "50%",
+              background: "white",
+              opacity: (1 - k) * 0.9,
+              boxShadow: "0 0 8px rgba(160,200,255,0.9)",
+            }}
+          />
+        );
+      })}
     </>
   );
 };
@@ -128,6 +154,7 @@ const Burst: React.FC<{ box: Box; at: number }> = ({ box, at }) => {
 export const DenoiseLogo: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
+  const t = frame / fps;
 
   const logoW = width >= height ? 1100 : 900;
   const box: Box = {
@@ -145,58 +172,48 @@ export const DenoiseLogo: React.FC = () => {
   const lens = lensFor(width, height);
 
   // --- Photo: noisy -> before/after wipe -> push into the lens ---------------------
-  const photoIn = interpolate(frame, [0, 12], [0, 1], clamp);
-  const wipe = interpolate(frame, PHOTO_WIPE, [-0.02, 1.02], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-  const wipePx = wipe * width;
-  const drift = interpolate(frame, [0, PUSH[0]], [1, 1.03], clamp);
-  const push = interpolate(frame, PUSH, [1, PUSH_SCALE / 1.03], { ...clamp, easing: Easing.in(Easing.quad) });
-  const photoScale = drift * push;
-  const pushBlur = interpolate(frame, [PUSH[1] - 16, PUSH[1]], [0, 5], clamp);
-  const ringGlow = interpolate(frame, [PUSH[1] - 14, MATCH], [0, 1], clamp);
-  const photoOut = interpolate(frame, [MATCH - 2, MATCH + 6], [1, 0], clamp);
-  const flash = interpolate(frame, [MATCH - 3, MATCH, MATCH + 7], [0, 0.5, 0], clamp);
-  const showPhoto = frame < MATCH + 6;
+  const photoIn = ease(t, T.photoIn, EASE_OUT);
+  const wipePx = interpolate(ease(t, T.wipe, EASE_IN_OUT), [0, 1], [-0.02, 1.02]) * width;
+  const drift = interpolate(t, [0, T.push[0]], [1, 1.04], clamp);
+  const pushK = ease(t, T.push, EASE_IN);
+  const photoScale = drift * interpolate(pushK, [0, 1], [1, PUSH_SCALE / 1.04]);
+  const pushBlur = interpolate(t, [T.push[1] - 0.45, T.push[1]], [0, 4], clamp);
+  const ringGlow = interpolate(t, [T.match - 0.4, T.match + 0.05], [0, 1], clamp);
+  const photoOut = interpolate(t, [T.match - 0.05, T.match + 0.3], [1, 0], clamp);
+  const flash = interpolate(t, [T.match - 0.1, T.match + 0.02, T.match + 0.35], [0, 0.2, 0], clamp);
+  const showPhoto = t < T.match + 0.35;
 
   // --- Letters ----------------------------------------------------------------------
-  const o = LETTERS[3];
-  const oBox = letterBox(o);
-  const oStartScale = (2 * lens.r * PUSH_SCALE) / oBox.w;
-  const settle = interpolate(frame, O_SETTLE, [0, 1], { ...clamp, easing: Easing.out(Easing.exp) });
-  const oScale = oStartScale + (1 - oStartScale) * settle;
+  const oBox = letterBox(LETTERS[3]);
+  const oStartScale = (2 * lens.r * PUSH_SCALE * 0.94) / oBox.w;
+  const settle = ease(t, T.oSettle, EASE_OUT);
+  const oScale = Math.exp(Math.log(oStartScale) * (1 - settle)); // scale in log space reads as constant speed
   const oDx = (lens.cx - (oBox.x + oBox.w / 2)) * (1 - settle);
   const oDy = (lens.cy - (oBox.y + oBox.h / 2)) * (1 - settle);
 
-  const beam = interpolate(frame, DENOISE, [box.x - 80, box.x + box.w + 80], {
-    ...clamp,
-    easing: Easing.inOut(Easing.quad),
-  });
-  const cleanOf = (b: Box) => interpolate(beam, [b.x, b.x + b.w], [0, 1], clamp);
-  // first frame the beam passes a letter's centre (when its noise is thrown off)
+  const beamAt = (time: number) =>
+    interpolate(ease(time, T.denoise, EASE_IN_OUT), [0, 1], [box.x - 120, box.x + box.w + 120]);
+  const beam = beamAt(t);
+  // a letter cleans over the beam's passage plus a soft margin either side
+  const cleanOf = (b: Box) => interpolate(beam, [b.x - 40, b.x + b.w + 40], [0, 1], { ...clamp, easing: EASE_IN_OUT });
   const burstAt = (b: Box) => {
-    for (let f = DENOISE[0]; f <= DENOISE[1]; f++) {
-      const x = interpolate(f, DENOISE, [box.x - 80, box.x + box.w + 80], {
-        ...clamp,
-        easing: Easing.inOut(Easing.quad),
-      });
-      if (x >= b.x + b.w / 2) return f;
+    for (let s = T.denoise[0]; s <= T.denoise[1]; s += 1 / fps) {
+      if (beamAt(s) >= b.x + b.w / 2) return s;
     }
-    return DENOISE[1];
+    return T.denoise[1];
   };
 
-  const finalPush = interpolate(frame, [FINAL, FINAL + 70], [1, 1.035], {
-    ...clamp,
-    easing: Easing.out(Easing.cubic),
-  });
-  const grainIn = interpolate(frame, [FINAL, FINAL + 30], [0, 1], clamp);
-  const shine = interpolate(frame, [350, 395], [-20, 120], { ...clamp, easing: Easing.inOut(Easing.quad) });
+  const finalPush = interpolate(t, [T.final - 2, DENOISE_SECONDS], [1, 1.045], clamp);
+  const grainIn = ease(t, [T.final, T.final + 0.9], EASE_OUT);
+  const shine = interpolate(ease(t, T.shine, EASE_IN_OUT), [0, 1], [-20, 120]);
+  const at = (s: number) => Math.round(s * fps);
 
   return (
     <AbsoluteFill style={{ backgroundColor: "black", overflow: "hidden" }}>
-      {/* soft glow behind the logo once we are in the type world */}
       <AbsoluteFill
         style={{
-          background: "radial-gradient(ellipse at 50% 50%, rgba(40,70,160,0.35), rgba(0,0,0,0) 60%)",
-          opacity: interpolate(frame, [MATCH, MATCH + 20], [0, 1], clamp),
+          background: "radial-gradient(ellipse at 50% 50%, rgba(40,70,160,0.32), rgba(0,0,0,0) 60%)",
+          opacity: interpolate(t, [T.match, T.match + 0.8], [0, 1], clamp),
         }}
       />
 
@@ -219,11 +236,12 @@ export const DenoiseLogo: React.FC = () => {
               w={Math.round(width / 2)}
               h={Math.round(height / 2)}
               seed={5}
-              paint={grain(0.55)}
+              paint={grain(0.5)}
+              step={Math.round(fps / 24)}
               style={{ width, height }}
             />
           </AbsoluteFill>
-          <Sparkle x={lens.cx - lens.r * 0.12} y={lens.cy - lens.r * 0.4} size={120} at={108} />
+          <Sparkle x={lens.cx - lens.r * 0.12} y={lens.cy - lens.r * 0.4} size={120} at={at(T.glint)} />
           <div
             style={{
               position: "absolute",
@@ -232,33 +250,31 @@ export const DenoiseLogo: React.FC = () => {
               width: lens.r * 2,
               height: lens.r * 2,
               borderRadius: "50%",
-              border: `${10 * ringGlow}px solid rgba(255,255,255,${ringGlow})`,
-              boxShadow: `0 0 ${60 * ringGlow}px rgba(170,210,255,${ringGlow})`,
+              border: `${8 * ringGlow}px solid rgba(255,255,255,${ringGlow})`,
+              boxShadow: `0 0 ${50 * ringGlow}px rgba(170,210,255,${ringGlow})`,
             }}
           />
         </AbsoluteFill>
       )}
-      {frame >= PHOTO_WIPE[0] - 6 && frame <= PHOTO_WIPE[1] + 6 && (
+      {t >= T.wipe[0] - 0.15 && t <= T.wipe[1] + 0.15 && (
         <Divider
           x={wipePx}
           top={0}
           height={height}
           opacity={interpolate(
-            frame,
-            [PHOTO_WIPE[0] - 6, PHOTO_WIPE[0], PHOTO_WIPE[1], PHOTO_WIPE[1] + 6],
+            t,
+            [T.wipe[0] - 0.15, T.wipe[0] + 0.05, T.wipe[1] - 0.05, T.wipe[1] + 0.15],
             [0, 1, 1, 0],
             clamp,
           )}
         />
       )}
 
-      {frame >= MATCH - 2 && (
+      {t >= T.match - 0.1 && (
         <AbsoluteFill style={{ transformOrigin: "50% 50%", transform: `scale(${finalPush})` }}>
           {LETTERS.map((l) => {
             const b = letterBox(l);
-            const clean = cleanOf(b);
-            const noise = 1 - clean;
-            const pop = 1 + 0.12 * Math.sin(Math.PI * clean);
+            const noise = 1 - cleanOf(b);
             if (l.name === "o") {
               return (
                 <Letter
@@ -266,24 +282,26 @@ export const DenoiseLogo: React.FC = () => {
                   name={l.name}
                   box={b}
                   noise={noise}
+                  extraBlur={6 * (1 - settle)}
                   style={{
-                    opacity: interpolate(frame, [MATCH - 2, MATCH + 4], [0, 1], clamp),
-                    transform: `translate(${oDx}px, ${oDy}px) scale(${oScale * pop})`,
+                    opacity: interpolate(t, [T.match - 0.1, T.match + 0.25], [0, 1], clamp),
+                    transform: `translate(${oDx}px, ${oDy}px) scale(${oScale})`,
                   }}
                 />
               );
             }
-            const t = spring({ frame: frame - l.at, fps, config: { damping: 10, mass: 0.7 } });
-            if (frame < l.at) return null;
+            const p = ease(t, [l.at, l.at + T.letterIn], EASE_OUT);
+            if (p <= 0) return null;
             return (
               <Letter
                 key={l.name}
                 name={l.name}
                 box={b}
                 noise={noise}
+                extraBlur={10 * (1 - p)}
                 style={{
-                  opacity: interpolate(t, [0, 0.3], [0, 1], clamp),
-                  transform: `translate(${(1 - t) * l.from[0] * box.h}px, ${(1 - t) * l.from[1] * box.h}px) rotate(${(1 - t) * l.rot}deg) scale(${(0.4 + 0.6 * t) * pop})`,
+                  opacity: interpolate(p, [0, 0.5], [0, 1], clamp),
+                  transform: `translateY(${(1 - p) * box.h * 0.55}px) scale(${0.9 + 0.1 * p})`,
                 }}
               />
             );
@@ -292,7 +310,7 @@ export const DenoiseLogo: React.FC = () => {
             <Burst key={l.name} box={letterBox(l)} at={burstAt(letterBox(l))} />
           ))}
 
-          {frame >= FINAL && (
+          {t >= T.final && (
             <>
               <Img
                 src={staticFile("denoise/logo-grain.png")}
@@ -302,7 +320,7 @@ export const DenoiseLogo: React.FC = () => {
                   top: box.y,
                   width: box.w,
                   height: box.h,
-                  opacity: grainIn * (0.85 + 0.15 * Math.sin(frame / 7)),
+                  opacity: grainIn * (0.88 + 0.12 * Math.sin(t * 3)),
                 }}
               />
               <div
@@ -313,31 +331,31 @@ export const DenoiseLogo: React.FC = () => {
                   width: box.w,
                   height: box.h,
                   ...maskStyle(LOGO),
-                  background: `linear-gradient(105deg, rgba(120,170,255,0) ${shine - 10}%, rgba(150,200,255,0.9) ${shine}%, rgba(120,170,255,0) ${shine + 10}%)`,
+                  background: `linear-gradient(105deg, rgba(120,170,255,0) ${shine - 12}%, rgba(160,205,255,0.85) ${shine}%, rgba(120,170,255,0) ${shine + 12}%)`,
                 }}
               />
-              <Sparkle x={box.x + box.w * 0.03} y={box.y + box.h * 0.25} size={70} at={365} />
-              <Sparkle x={box.x + box.w * 0.985} y={box.y + box.h * 0.72} size={60} at={382} />
-              <Sparkle x={box.x + box.w * 0.68} y={box.y + box.h * 0.1} size={50} at={398} />
+              <Sparkle x={box.x + box.w * 0.03} y={box.y + box.h * 0.25} size={70} at={at(12.1)} />
+              <Sparkle x={box.x + box.w * 0.985} y={box.y + box.h * 0.72} size={60} at={at(12.6)} />
+              <Sparkle x={box.x + box.w * 0.68} y={box.y + box.h * 0.1} size={50} at={at(13.1)} />
             </>
           )}
         </AbsoluteFill>
       )}
 
-      {frame >= DENOISE[0] - 4 && frame <= DENOISE[1] + 4 && (
+      {t >= T.denoise[0] - 0.15 && t <= T.denoise[1] + 0.15 && (
         <div
           style={{
             position: "absolute",
-            left: beam - 3,
+            left: beam - 2,
             top: box.y - box.h * 1.2,
-            width: 6,
+            width: 4,
             height: box.h * 3.4,
             background:
               "linear-gradient(180deg, rgba(255,255,255,0), white 25%, white 75%, rgba(255,255,255,0))",
-            boxShadow: "0 0 30px 8px rgba(170,210,255,0.8), 0 0 90px 20px rgba(120,170,255,0.45)",
+            boxShadow: "0 0 26px 6px rgba(170,210,255,0.75), 0 0 80px 18px rgba(120,170,255,0.4)",
             opacity: interpolate(
-              frame,
-              [DENOISE[0] - 4, DENOISE[0] + 2, DENOISE[1] - 2, DENOISE[1] + 4],
+              t,
+              [T.denoise[0] - 0.15, T.denoise[0] + 0.1, T.denoise[1] - 0.1, T.denoise[1] + 0.15],
               [0, 1, 1, 0],
               clamp,
             ),

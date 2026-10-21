@@ -17,15 +17,17 @@ export const PixelCanvas: React.FC<{
   h: number;
   seed: number;
   paint: Painter;
+  // repaint the noise every `step` frames (keeps grain from shimmering at 60fps)
+  step?: number;
   style?: React.CSSProperties;
-}> = ({ w, h, seed, paint, style }) => {
+}> = ({ w, h, seed, paint, step = 1, style }) => {
   const frame = useCurrentFrame();
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
     const ctx = ref.current?.getContext("2d");
     if (!ctx) return;
     const img = ctx.createImageData(w, h);
-    paint(img.data, w, h, mulberry32(seed * 100003 + frame * 7919));
+    paint(img.data, w, h, mulberry32(seed * 100003 + Math.floor(frame / step) * 7919));
     ctx.putImageData(img, 0, 0);
   });
   return (
