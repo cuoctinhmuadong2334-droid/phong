@@ -1,0 +1,32 @@
+---
+import { site } from '../data/site';
+
+const links = [
+  { href: '/#du-an', label: 'Dự án' },
+  { href: '/#dich-vu', label: 'Dịch vụ' },
+  { href: '/#gioi-thieu', label: 'Giới thiệu' },
+];
+---
+
+<header
+  class="fixed inset-x-0 top-0 z-40 bg-gradient-to-b from-ink/80 to-transparent"
+>
+  <nav class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-8">
+    <a href="/" class="text-sm font-bold uppercase tracking-[0.25em]">{site.name}</a>
+    <div class="flex items-center gap-6 text-sm">
+      {
+        links.map((l) => (
+          <a href={l.href} class="hidden text-paper/70 transition hover:text-paper sm:inline">
+            {l.label}
+          </a>
+        ))
+      }
+      <a
+        href="/#lien-he"
+        class="rounded-full border border-paper/30 px-4 py-1.5 transition hover:border-accent hover:text-accent"
+      >
+        Liên hệ
+      </a>
+    </div>
+  </nav>
+</header>

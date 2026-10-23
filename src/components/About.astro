@@ -1,0 +1,43 @@
+---
+import { site } from '../data/site';
+
+const { photo, bio, gear, clients } = site.about;
+---
+
+<section id="gioi-thieu" class="mx-auto max-w-7xl scroll-mt-20 px-4 py-20 sm:px-8 sm:py-28">
+  <div class="grid gap-12 lg:grid-cols-[2fr_3fr] lg:gap-20">
+    <div class="thumb-bg aspect-[4/5] overflow-hidden rounded">
+      {
+        photo ? (
+          <img src={photo} alt={site.name} loading="lazy" class="size-full object-cover" />
+        ) : (
+          <div class="flex size-full items-center justify-center text-sm text-muted">
+            Ảnh chân dung
+          </div>
+        )
+      }
+    </div>
+
+    <div>
+      <h2 class="mb-8 text-3xl font-bold sm:text-4xl">Giới thiệu</h2>
+      <div class="space-y-4 text-lg leading-relaxed text-paper/85">
+        {bio.map((p) => <p>{p}</p>)}
+      </div>
+
+      <dl class="mt-12 grid gap-8 sm:grid-cols-2">
+        <div>
+          <dt class="mb-3 text-xs tracking-[0.25em] text-muted uppercase">Thiết bị & phần mềm</dt>
+          <dd>
+            <ul class="space-y-1.5">{gear.map((g) => <li>{g}</li>)}</ul>
+          </dd>
+        </div>
+        <div>
+          <dt class="mb-3 text-xs tracking-[0.25em] text-muted uppercase">Đã hợp tác</dt>
+          <dd>
+            <ul class="space-y-1.5">{clients.map((c) => <li>{c}</li>)}</ul>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</section>

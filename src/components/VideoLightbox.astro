@@ -1,0 +1,50 @@
+---
+// Bấm vào bất kỳ phần tử nào có data-youtube="ID" sẽ mở video trong khung này.
+// iframe YouTube chỉ được tạo khi bấm, nên trang tải nhanh.
+---
+
+<dialog
+  id="video-lightbox"
+  class="m-auto w-full max-w-6xl bg-transparent p-4 backdrop:bg-black/90 sm:p-8"
+  aria-label="Xem video"
+>
+  <div class="flex flex-col items-end gap-3">
+    <button
+      type="button"
+      data-close
+      class="py-1 text-sm tracking-widest text-paper/80 uppercase hover:text-accent"
+    >
+      Đóng ✕
+    </button>
+    <div data-frame class="aspect-video w-full overflow-hidden rounded bg-black"></div>
+  </div>
+</dialog>
+
+<script>
+  import { youtubeEmbed } from '../data/site';
+
+  const dialog = document.getElementById('video-lightbox') as HTMLDialogElement;
+  const frame = dialog.querySelector('[data-frame]') as HTMLElement;
+
+  document.addEventListener('click', (e) => {
+    const trigger = (e.target as Element).closest<HTMLElement>('[data-youtube]');
+    if (!trigger) return;
+    e.preventDefault();
+    const iframe = document.createElement('iframe');
+    iframe.src = youtubeEmbed(trigger.dataset.youtube!);
+    iframe.title = trigger.dataset.title || 'Video';
+    iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    iframe.allowFullscreen = true;
+    iframe.className = 'size-full';
+    frame.replaceChildren(iframe);
+    dialog.showModal();
+  });
+
+  dialog.querySelector('[data-close]')!.addEventListener('click', () => dialog.close());
+  // Bấm ra vùng tối bên ngoài để đóng
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+  // Dừng video khi đóng
+  dialog.addEventListener('close', () => frame.replaceChildren());
+</script>

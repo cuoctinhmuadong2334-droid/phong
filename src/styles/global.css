@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #0a0a0a;
+  --color-panel: #141414;
+  --color-line: #262626;
+  --color-paper: #f2efe9;
+  --color-muted: #9a968f;
+  --color-accent: #e8b04a;
+  --font-sans: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink text-paper font-sans antialiased;
+  }
+  ::selection {
+    @apply bg-accent text-ink;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Ảnh thumbnail: nền gradient hiện trong lúc ảnh đang tải hoặc lỗi */
+.thumb-bg {
+  background: linear-gradient(135deg, #1c1c1c, #2a241a);
+}
