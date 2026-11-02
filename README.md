@@ -21,7 +21,8 @@ npm install
 | `npm run build:chalpha-kv` | Render motion từ hình key visual CH-Alpha Plus ra `out/chalpha-kv.mp4` |
 | `npm run build:error-text` | Render chữ "MẮC LỖI, trả giao bóng rất mạnh" trên phông xanh `#00FF00` (1080×1920, 60fps, 7,2 giây) ra `out/error-return-green.mp4`, để chroma key trong CapCut |
 | `npm run build:error-text-4k` | Như trên nhưng 2160×3840: mép chữ sắc hơn, ít viền xanh hơn khi chroma key |
-| `npm run build:error-text-alpha` | Chữ **nền trong suốt** có bóng đổ (ProRes 4444 alpha, alpha nhân sẵn: `out/error-return-alpha-premult.mov`), kéo thẳng vào CapCut, không cần chroma key. Cần Python 3 + Pillow + NumPy (xem `tools/premult_encode.py`) |
+| `npm run build:error-text-alpha` | Chữ **nền trong suốt** có bóng đổ và SFX (ProRes 4444 alpha, alpha nhân sẵn, tiếng PCM: `out/error-return-alpha-sfx.mov`), kéo thẳng vào CapCut, không cần chroma key. Cần Python 3 + Pillow + NumPy |
+| `npm run build:error-text-sfx` | Chỉ tạo lại file âm thanh `public/sfx/error-return.wav` (tổng hợp bằng code, khớp từng chuyển động: `tools/make_sfx.py`) |
 | `npm run build:error-text-alpha-webm` | Bản nền trong suốt dạng WebM (VP9 alpha, `out/error-return-alpha.webm`), nhẹ hơn nhiều |
 | `npm run build:denoise` | Render motion logo Denoise 15 giây, ngang 16:9, 60fps ra `out/denoise-16x9.mp4` |
 | `npm run build:chalpha-voice` | Render motion theo lời đọc của Tùng (~18,4 giây) ra `out/chalpha-voice.mp4` |
