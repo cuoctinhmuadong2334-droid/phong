@@ -19,7 +19,8 @@
     "build:error-text-4k": "remotion render ErrorReturnGreen out/error-return-green-4k.mp4 --scale=2 --codec=h264 --image-format=png --crf=10 --x264-preset=veryslow --pixel-format=yuv420p --color-space=bt709",
     "build:error-text-alpha": "remotion render ErrorReturnAlpha out/alpha-seq --sequence --image-format=png && python3 tools/premult_encode.py out/alpha-seq out/error-return-alpha-premult.mov 60 && python3 tools/make_sfx.py && remotion ffmpeg -y -i out/error-return-alpha-premult.mov -i public/sfx/error-return.wav -map 0:v -map 1:a -c:v copy -c:a pcm_s16le -t 7.2 out/error-return-alpha-sfx.mov",
     "build:error-text-alpha-webm": "remotion render ErrorReturnAlpha out/error-return-alpha.webm --codec=vp9 --image-format=png --pixel-format=yuva420p --crf=12",
-    "build:error-text-sfx": "python3 tools/make_sfx.py"
+    "build:error-text-sfx": "python3 tools/make_sfx.py",
+    "build:lesson-title": "remotion render LessonTitleAlpha out/lesson-seq --sequence --image-format=png && python3 tools/premult_encode.py out/lesson-seq out/lesson-title-premult.mov 60 && python3 tools/make_sfx_lesson.py && remotion ffmpeg -y -i out/lesson-title-premult.mov -i public/sfx/lesson-title.wav -map 0:v -map 1:a -c:v copy -c:a pcm_s16le -t 4.5 out/lesson-title-alpha-sfx.mov"
   },
   "dependencies": {
     "@remotion/cli": "4.0.529",

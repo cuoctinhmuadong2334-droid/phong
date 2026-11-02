@@ -12,6 +12,7 @@ import {
   ErrorReturnText,
 } from "./captext/ErrorReturnText";
 import { HelloWorld } from "./HelloWorld";
+import { LESSON_FPS, LESSON_SECONDS, LessonTitleAlpha } from "./captext/LessonTitle";
 import { JerseyShowcase, SHOWCASE_DURATION } from "./jersey/JerseyShowcase";
 
 export const RemotionRoot: React.FC = () => {
@@ -98,6 +99,14 @@ export const RemotionRoot: React.FC = () => {
         component={ErrorReturnText}
         durationInFrames={Math.round(ERROR_TEXT_SECONDS * ERROR_TEXT_FPS)}
         fps={ERROR_TEXT_FPS}
+        width={1080}
+        height={1920}
+      />
+      <Composition
+        id="LessonTitleAlpha"
+        component={LessonTitleAlpha}
+        durationInFrames={Math.round(LESSON_SECONDS * LESSON_FPS)}
+        fps={LESSON_FPS}
         width={1080}
         height={1920}
       />

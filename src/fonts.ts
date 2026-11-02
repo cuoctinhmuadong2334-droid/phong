@@ -44,3 +44,12 @@ export const phuduFont = load("Phudu", "phudu", ["800"], [
   { name: "latin", range: LATIN },
   { name: "vietnamese", range: VIETNAMESE },
 ]);
+
+// Fonts for the "Bài tập / TRẢ GIAO BÓNG" title: a round, chunky display face and a
+// marker-style handwriting face (both with Vietnamese support, SIL OFL via Fontsource).
+const BOTH = [
+  { name: "latin", range: LATIN },
+  { name: "vietnamese", range: VIETNAMESE },
+];
+export const roundFont = load("Baloo Two", "baloo-2", ["800"], BOTH);
+export const handFont = load("Sriracha", "sriracha", ["400"], BOTH);

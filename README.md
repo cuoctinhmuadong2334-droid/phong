@@ -23,6 +23,7 @@ npm install
 | `npm run build:error-text-4k` | Như trên nhưng 2160×3840: mép chữ sắc hơn, ít viền xanh hơn khi chroma key |
 | `npm run build:error-text-alpha` | Chữ **nền trong suốt** có bóng đổ và SFX (ProRes 4444 alpha, alpha nhân sẵn, tiếng PCM: `out/error-return-alpha-sfx.mov`), kéo thẳng vào CapCut, không cần chroma key. Cần Python 3 + Pillow + NumPy |
 | `npm run build:error-text-sfx` | Chỉ tạo lại file âm thanh `public/sfx/error-return.wav` (tổng hợp bằng code, khớp từng chuyển động: `tools/make_sfx.py`) |
+| `npm run build:lesson-title` | Motion tiêu đề "Bài tập / TRẢ GIAO BÓNG" (4,5 giây, nền trong suốt, bóng đổ, SFX) ra `out/lesson-title-alpha-sfx.mov`. Thời gian mọi chuyển động và âm thanh đọc từ `src/captext/lessonTimeline.json` |
 | `npm run build:error-text-alpha-webm` | Bản nền trong suốt dạng WebM (VP9 alpha, `out/error-return-alpha.webm`), nhẹ hơn nhiều |
 | `npm run build:denoise` | Render motion logo Denoise 15 giây, ngang 16:9, 60fps ra `out/denoise-16x9.mp4` |
 | `npm run build:chalpha-voice` | Render motion theo lời đọc của Tùng (~18,4 giây) ra `out/chalpha-voice.mp4` |
@@ -52,6 +53,7 @@ npm install
   - `KeyVisualPromo.tsx` – motion từ nguyên tấm key visual (sản phẩm giữ nguyên trong ảnh, không tách nền); chỉ logo, cờ Đức và tiêu đề được tách lớp để chuyển động (`public/chalpha/kv/`)
 - `public/chalpha/product.png` – ảnh sản phẩm đã tách nền
 - `src/captext/ErrorReturnText.tsx` – motion chữ phông xanh cho CapCut (7,2 giây): "MẮC LỖI," font Phudu màu đỏ, 3 giây sau "trả giao bóng rất mạnh" (trắng) vào, gạch đỏ quét qua và làm mờ từng từ; nền `#00FF00` phẳng, chữ ra bằng mặt nạ trượt, không bóng đổ để mép chữ sạch khi chroma key
+- `src/captext/LessonTitle.tsx` – tiêu đề "Bài tập / TRẢ GIAO BÓNG": nhãn băng dính viết tay (Sriracha), chữ Baloo 2 rơi và bẹp, bóng pickleball nảy; `tools/make_sfx_lesson.py` tạo âm thanh khớp từng cú chạm
 - `src/denoise/` – motion logo Denoise (khử nhiễu hạt): ảnh ống kính nhiễu hạt → đường chia trước/sau khử nhiễu ảnh → máy quay lao vào ống kính, ống kính match cut thành chữ "o" → các chữ nhảy vào (mờ, nhiễu) → tia quét khử nhiễu từng chữ → logo sạch
   - `DenoiseLogo.tsx` – cảnh chính (thời gian tính theo giây, render 60fps); `LensPhoto.tsx` – "ảnh" ống kính dựng bằng SVG; `NoiseCanvas.tsx`, `BeforeAfter.tsx`
 - `public/denoise/` – logo đã tách: đầy đủ, lõi chữ, hạt mép và từng chữ riêng (`letter-*.png`)
