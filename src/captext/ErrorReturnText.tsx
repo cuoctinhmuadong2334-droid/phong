@@ -30,6 +30,9 @@ const TEXT_WIDTH = 940; // both lines are fitted to this width
 const STRIKE_OVERSHOOT = 24; // red line sticks out this far past the white text
 const STRIKE_Y = 0.5; // vertical position of the strike inside the white line box (0..1)
 const LINE_HEIGHT = 1.2;
+// A tight contact shadow plus a soft, longer one: reads on bright and busy footage.
+const SHADOW =
+  "drop-shadow(0 3px 3px rgba(0,0,0,0.55)) drop-shadow(0 10px 18px rgba(0,0,0,0.5))";
 const BLUR_PX = 8; // blur of the white words once the red line has gone through them
 
 const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
@@ -96,7 +99,10 @@ const slide = (inProgress: number, outProgress: number, blur = 0): React.CSSProp
 
 // `transparent`: no background at all, for rendering with an alpha channel (drop straight
 // into an editor, no chroma key needed). Otherwise the flat green screen is drawn.
-export const ErrorReturnText: React.FC<{ transparent?: boolean }> = ({ transparent = false }) => {
+export const ErrorReturnText: React.FC<{ transparent?: boolean; shadow?: boolean }> = ({
+  transparent = false,
+  shadow = false,
+}) => {
   const background = transparent ? undefined : GREEN;
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -154,6 +160,9 @@ export const ErrorReturnText: React.FC<{ transparent?: boolean }> = ({ transpare
           alignItems: "center",
           gap: sizes.red * 0.16,
           transform: `scale(${drift})`,
+          // black drop shadow under every text and the red line (alpha version only:
+          // on a green screen it would leave dark-green fringes after keying)
+          filter: shadow ? SHADOW : undefined,
         }}
       >
         <div style={{ transform: `scale(${hit * settle})` }}>
@@ -233,4 +242,4 @@ export const ErrorReturnText: React.FC<{ transparent?: boolean }> = ({ transpare
   );
 };
 
-export const ErrorReturnAlpha: React.FC = () => <ErrorReturnText transparent />;
+export const ErrorReturnAlpha: React.FC = () => <ErrorReturnText transparent shadow />;
