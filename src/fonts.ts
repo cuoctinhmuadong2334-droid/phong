@@ -38,3 +38,9 @@ export const bodyFont = load("Be Vietnam Pro", "be-vietnam-pro", ["500", "700", 
 export const scriptFont = load("Great Vibes", "great-vibes", ["400"]);
 
 export const techFont = load("Orbitron", "orbitron", ["500", "700"]);
+
+// Phudu: Vietnamese display face used for the "MẮC LỖI" headline.
+export const phuduFont = load("Phudu", "phudu", ["800"], [
+  { name: "latin", range: LATIN },
+  { name: "vietnamese", range: VIETNAMESE },
+]);
