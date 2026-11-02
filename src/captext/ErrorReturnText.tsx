@@ -94,7 +94,10 @@ const slide = (inProgress: number, outProgress: number, blur = 0): React.CSSProp
   filter: blur > 0.05 ? `blur(${blur}px)` : undefined,
 });
 
-export const ErrorReturnText: React.FC = () => {
+// `transparent`: no background at all, for rendering with an alpha channel (drop straight
+// into an editor, no chroma key needed). Otherwise the flat green screen is drawn.
+export const ErrorReturnText: React.FC<{ transparent?: boolean }> = ({ transparent = false }) => {
+  const background = transparent ? undefined : GREEN;
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
@@ -115,7 +118,7 @@ export const ErrorReturnText: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sizes]);
 
-  if (!sizes || !geo) return <AbsoluteFill style={{ backgroundColor: GREEN }} />;
+  if (!sizes || !geo) return <AbsoluteFill style={{ backgroundColor: background }} />;
 
   const redChars = Array.from(RED_TEXT);
 
@@ -137,7 +140,7 @@ export const ErrorReturnText: React.FC = () => {
   return (
     <AbsoluteFill
       style={{
-        backgroundColor: GREEN,
+        backgroundColor: background,
         alignItems: "center",
         justifyContent: "center",
         fontFamily: bodyFont,
@@ -229,3 +232,5 @@ export const ErrorReturnText: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+export const ErrorReturnAlpha: React.FC = () => <ErrorReturnText transparent />;

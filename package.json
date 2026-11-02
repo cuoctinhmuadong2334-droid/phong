@@ -16,7 +16,9 @@
     "lint": "tsc",
     "build:denoise": "remotion render DenoiseLogo16x9 out/denoise-16x9.mp4",
     "build:error-text": "remotion render ErrorReturnGreen out/error-return-green.mp4 --codec=h264 --image-format=png --crf=10 --x264-preset=veryslow --pixel-format=yuv420p --color-space=bt709",
-    "build:error-text-4k": "remotion render ErrorReturnGreen out/error-return-green-4k.mp4 --scale=2 --codec=h264 --image-format=png --crf=10 --x264-preset=veryslow --pixel-format=yuv420p --color-space=bt709"
+    "build:error-text-4k": "remotion render ErrorReturnGreen out/error-return-green-4k.mp4 --scale=2 --codec=h264 --image-format=png --crf=10 --x264-preset=veryslow --pixel-format=yuv420p --color-space=bt709",
+    "build:error-text-alpha": "remotion render ErrorReturnAlpha out/error-return-alpha.mov --codec=prores --prores-profile=4444 --image-format=png --pixel-format=yuva444p10le",
+    "build:error-text-alpha-webm": "remotion render ErrorReturnAlpha out/error-return-alpha.webm --codec=vp9 --image-format=png --pixel-format=yuva420p --crf=12"
   },
   "dependencies": {
     "@remotion/cli": "4.0.529",
