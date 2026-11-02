@@ -19,6 +19,8 @@ npm install
 | `npm run build:chalpha` | Render video dọc CH-Alpha Plus ra `out/chalpha.mp4` |
 | `npm run build:chalpha-stats` | Render video dọc CH-Alpha Plus bản số liệu ra `out/chalpha-stats.mp4` |
 | `npm run build:chalpha-kv` | Render motion từ hình key visual CH-Alpha Plus ra `out/chalpha-kv.mp4` |
+| `npm run build:error-text` | Render chữ "MẮC LỖI, trả giao bóng rất mạnh" trên phông xanh `#00FF00` (1080×1920, 60fps, 4,5 giây) ra `out/error-return-green.mp4`, để chroma key trong CapCut |
+| `npm run build:error-text-4k` | Như trên nhưng 2160×3840: mép chữ sắc hơn, ít viền xanh hơn khi chroma key |
 | `npm run build:denoise` | Render motion logo Denoise 15 giây, ngang 16:9, 60fps ra `out/denoise-16x9.mp4` |
 | `npm run build:chalpha-voice` | Render motion theo lời đọc của Tùng (~18,4 giây) ra `out/chalpha-voice.mp4` |
 | `npm run build:chalpha-story` | Render video ghép liền mạch (khớp gối + key visual, ~19 giây) ra `out/chalpha-story.mp4` |
@@ -46,6 +48,7 @@ npm install
   - `Fx.tsx` – hiệu ứng dùng cho video ghép: sóng đau, rung khung hình, bùng sáng hồi phục, tia lấp lánh, light leak
   - `KeyVisualPromo.tsx` – motion từ nguyên tấm key visual (sản phẩm giữ nguyên trong ảnh, không tách nền); chỉ logo, cờ Đức và tiêu đề được tách lớp để chuyển động (`public/chalpha/kv/`)
 - `public/chalpha/product.png` – ảnh sản phẩm đã tách nền
+- `src/captext/ErrorReturnText.tsx` – motion chữ phông xanh cho CapCut: chỉ dùng màu đặc (xanh `#00FF00`, đỏ, trắng), mặt nạ trượt, không bóng/nhòe/mờ để mép chữ sạch khi chroma key
 - `src/denoise/` – motion logo Denoise (khử nhiễu hạt): ảnh ống kính nhiễu hạt → đường chia trước/sau khử nhiễu ảnh → máy quay lao vào ống kính, ống kính match cut thành chữ "o" → các chữ nhảy vào (mờ, nhiễu) → tia quét khử nhiễu từng chữ → logo sạch
   - `DenoiseLogo.tsx` – cảnh chính (thời gian tính theo giây, render 60fps); `LensPhoto.tsx` – "ảnh" ống kính dựng bằng SVG; `NoiseCanvas.tsx`, `BeforeAfter.tsx`
 - `public/denoise/` – logo đã tách: đầy đủ, lõi chữ, hạt mép và từng chữ riêng (`letter-*.png`)

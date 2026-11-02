@@ -5,6 +5,7 @@ import { ChAlphaStoryPromo, CH_ALPHA_STORY_DURATION } from "./chalpha/StoryPromo
 import { ChAlphaVoicePromo, CH_ALPHA_VOICE_DURATION } from "./chalpha/VoicePromo";
 import { ChAlphaStatsPromo, CH_ALPHA_STATS_DURATION } from "./chalpha/StatsPromo";
 import { DenoiseLogo, DENOISE_FPS, DENOISE_SECONDS } from "./denoise/DenoiseLogo";
+import { ERROR_TEXT_FPS, ERROR_TEXT_SECONDS, ErrorReturnText } from "./captext/ErrorReturnText";
 import { HelloWorld } from "./HelloWorld";
 import { JerseyShowcase, SHOWCASE_DURATION } from "./jersey/JerseyShowcase";
 
@@ -78,6 +79,14 @@ export const RemotionRoot: React.FC = () => {
         fps={DENOISE_FPS}
         width={1920}
         height={1080}
+      />
+      <Composition
+        id="ErrorReturnGreen"
+        component={ErrorReturnText}
+        durationInFrames={Math.round(ERROR_TEXT_SECONDS * ERROR_TEXT_FPS)}
+        fps={ERROR_TEXT_FPS}
+        width={1080}
+        height={1920}
       />
     </>
   );
